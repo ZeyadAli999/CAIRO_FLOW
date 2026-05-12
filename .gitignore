@@ -33,3 +33,6 @@ data/*.db
 data/*.joblib
 
 .claude/
+
+.skills/
+AGENTS.md
