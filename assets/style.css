@@ -1,0 +1,1982 @@
+/* CairoFlow — dark theme. Auto-loaded by Dash from /assets. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg-primary: #0e0e10;
+  --bg-secondary: #18181b;
+  --bg-tertiary: #27272a;
+  --border: #2a2a2e;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #00E5FF;
+  --accent-dim: #00b8cc;
+  --accent-warm: #FFB800;
+  --danger: #ef4444;
+  --danger-dim: #c0392b;
+  --success: #22c55e;
+  --road: #3a3a3a;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #react-entry-point, #_dash-app-content {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 { font-weight: 600; letter-spacing: -0.02em; }
+
+a { color: var(--accent); text-decoration: none; }
+
+/* ---------------- Top bar (Phase 3 polish — logo + wordmark) ---------------- */
+
+.cf-topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(24, 24, 27, 0.85);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  position: relative;
+}
+
+.cf-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cf-logo-button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(174, 219, 219, 0.16);
+  border-radius: 50%;
+  padding: 3px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+  box-shadow: 0 12px 28px rgba(0,0,0,0.24);
+  cursor: pointer;
+}
+
+.cf-logo-mark {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 6px rgba(43, 201, 210, 0.22));
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  object-fit: cover;
+}
+
+.cf-brand-lockup {
+  display: grid;
+  gap: 3px;
+}
+
+.cf-brand-subtitle {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.cf-wordmark {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.cf-wordmark-1 {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cf-wordmark-2 {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.cf-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.cf-theme-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(174, 219, 219, 0.16);
+  color: var(--text-secondary);
+  background: linear-gradient(180deg, rgba(18, 26, 32, 0.76), rgba(8, 13, 18, 0.78));
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cf-theme-toggle .cf-theme-label-light,
+.cf-theme-toggle.is-light .cf-theme-label-dark {
+  display: none;
+}
+
+.cf-theme-toggle.is-light .cf-theme-label-light,
+.cf-theme-toggle .cf-theme-label-dark {
+  display: inline;
+}
+
+.cf-theme-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(43, 201, 210, 0.34);
+  transform: translateY(-1px);
+}
+
+.cf-phase-label {
+  display: none;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* ---------------- Toggle switch ---------------- */
+
+.cf-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cf-toggle input { display: none; }
+
+.cf-toggle-track {
+  width: 36px;
+  height: 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  position: relative;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.cf-toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1), background 160ms ease;
+}
+
+.cf-toggle input:checked + .cf-toggle-track {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: var(--accent);
+}
+
+.cf-toggle input:checked + .cf-toggle-track .cf-toggle-thumb {
+  transform: translateX(16px);
+  background: var(--accent);
+}
+
+/* ---------------- App layout ---------------- */
+
+.cf-shell {
+  display: grid;
+  grid-template-columns: var(--cf-sidebar-width, 360px) minmax(0, 1fr);
+  height: calc(100vh - 56px);
+  width: 100vw;
+  background: var(--bg-primary);
+  transition: grid-template-columns 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cf-sidebar {
+  position: relative;
+  width: auto;
+  min-width: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  /* Subtle bottom fade when content overflows */
+  -webkit-mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
+          mask-image: linear-gradient(to bottom, black 95%, transparent 100%);
+}
+
+.cf-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+/* ---------------- Mode pills ---------------- */
+
+.cf-pills {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  background: var(--bg-tertiary);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.cf-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 150ms ease, color 150ms ease, transform 100ms ease;
+}
+
+.cf-pill:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.cf-pill.active {
+  background: linear-gradient(180deg,
+              rgba(0, 229, 255, 0.18),
+              rgba(0, 184, 204, 0.10));
+  color: var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(0, 229, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.cf-pill .cf-pill-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ---------------- Cards (Phase 3 polish — 14px radius + softer shadow) -- */
+
+.cf-card {
+  background: linear-gradient(180deg,
+              var(--bg-tertiary) 0%,
+              #232326 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.cf-card + .cf-card { margin-top: 10px; }
+
+.cf-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 8px 0;
+}
+
+.cf-card-body {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cf-card-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.cf-placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ---------------- Algorithm chip / programmer panel ---------------- */
+
+.cf-algo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 184, 0, 0.10);
+  border: 1px solid rgba(255, 184, 0, 0.40);
+  color: var(--accent-warm);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.cf-prog-panel {
+  border: 1px solid rgba(255, 184, 0, 0.30);
+  background: rgba(255, 184, 0, 0.04);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cf-prog-panel .cf-prog-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.cf-prog-panel .cf-prog-row:last-of-type { border-bottom: none; }
+
+.cf-prog-panel code {
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.cf-prog-snippet {
+  margin-top: 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ---------------- Control strip / map ---------------- */
+
+.cf-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.cf-controls-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.cf-slider-wrap {
+  flex: 1;
+  min-width: 220px;
+  max-width: 300px;
+}
+
+.cf-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.cf-btn:hover {
+  background: #2f2f33;
+  border-color: #3a3a3e;
+}
+
+.cf-btn.cf-btn-accent {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: rgba(0, 229, 255, 0.40);
+  color: var(--accent);
+}
+
+.cf-btn.cf-btn-accent:hover {
+  background: rgba(0, 229, 255, 0.20);
+}
+
+.cf-map-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.cf-map-wrap .leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+}
+
+.cf-map-wrap .leaflet-control-attribution {
+  background: rgba(14,14,16,0.8);
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.cf-map-wrap .leaflet-control-attribution a { color: var(--text-secondary); }
+
+/* ---------------- Network mode (Phase 2) ---------------- */
+
+.cf-pills.cf-pills-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.cf-pill.cf-pill-wide {
+  flex-direction: row;
+  gap: 8px;
+  font-size: 13px;
+  padding: 12px 8px;
+}
+
+.cf-checklist {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.cf-checklist label {
+  display: block;
+  margin-top: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cf-checklist input[type="checkbox"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.cf-checklist input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.cf-checklist input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid #0e0e10;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.cf-btn-large {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.cf-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 12px;
+}
+
+.cf-stat-row:last-of-type { border-bottom: none; }
+
+.cf-stat-label {
+  color: var(--text-secondary);
+}
+
+.cf-stat-value {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  max-width: 65%;
+  overflow-wrap: anywhere;
+}
+
+.cf-stat-label {
+  letter-spacing: 0.02em;
+}
+
+.cf-stat-value.cf-stat-accent {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------------- rc-slider overrides ---------------- */
+
+.rc-slider-rail { background: var(--bg-tertiary) !important; }
+.rc-slider-track { background: var(--accent) !important; }
+.rc-slider-handle {
+  border: 2px solid var(--accent) !important;
+  background: var(--bg-primary) !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+.rc-slider-handle:focus { box-shadow: 0 0 0 4px rgba(0,229,255,0.20) !important; }
+.rc-slider-mark-text { color: var(--text-muted) !important; font-size: 11px !important; }
+.rc-slider-mark-text-active { color: var(--text-primary) !important; }
+.rc-slider-dot {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--border) !important;
+}
+.rc-slider-dot-active {
+  border-color: var(--accent) !important;
+}
+
+/* ---------------- Scrollbars ---------------- */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #3a3a3e; }
+
+/* ============================================================ */
+/*  Phase 3 — Visual polish pass                                */
+/* ============================================================ */
+
+/* ---------------- Premium buttons ---------------- */
+
+.cf-btn {
+  border-radius: 12px;
+  transition: background 200ms ease, border-color 200ms ease,
+              filter 200ms ease, box-shadow 200ms ease,
+              transform 100ms ease;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.cf-btn:active { transform: translateY(1px); }
+
+/* Primary — accent cyan gradient (Find Route, Compute Network when set) */
+.cf-btn-primary {
+  background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+  border: 1px solid rgba(0, 229, 255, 0.55);
+  color: #0a0a0a;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 229, 255, 0.10);
+}
+
+.cf-btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 2px 8px rgba(0, 229, 255, 0.30),
+    0 0 0 1px rgba(0, 229, 255, 0.20);
+}
+
+.cf-btn-primary:active {
+  filter: brightness(0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 1px 2px rgba(0, 0, 0, 0.40);
+}
+
+/* Accent — outline-style (Compute Network, Save scenario, etc.) */
+.cf-btn.cf-btn-accent {
+  background: linear-gradient(180deg,
+              rgba(0, 229, 255, 0.16),
+              rgba(0, 184, 204, 0.10));
+  border: 1px solid rgba(0, 229, 255, 0.50);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.30);
+}
+
+.cf-btn.cf-btn-accent:hover {
+  filter: brightness(1.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 6px rgba(0, 229, 255, 0.20);
+}
+
+/* Danger — red gradient with red glow (Dispatch) */
+.cf-btn-danger {
+  background: linear-gradient(180deg, var(--danger), var(--danger-dim));
+  border: 1px solid rgba(239, 68, 68, 0.65);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(239, 68, 68, 0.20),
+    0 0 16px rgba(239, 68, 68, 0.18);
+}
+
+.cf-btn-danger:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 2px 10px rgba(239, 68, 68, 0.45),
+    0 0 0 1px rgba(239, 68, 68, 0.30);
+}
+
+.cf-btn-danger:active {
+  filter: brightness(0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 1px 2px rgba(0, 0, 0, 0.40);
+}
+
+/* ---------------- Map node-marker pulse animations ---------------- */
+/*
+ * Applied to <CircleMarker pathOptions={"className": "cf-pulse"}>.
+ * Leaflet renders these as <path> elements inside an <svg>, so we
+ * animate stroke-opacity + stroke-width (no transform; SVG paths
+ * are positioned by coordinates, not bounding box).
+ */
+
+.cf-pulse {
+  animation: cf-pulse-anim 1.6s ease-in-out infinite;
+}
+
+@keyframes cf-pulse-anim {
+  0%, 100% { stroke-opacity: 0.30; stroke-width: 2; }
+  50%      { stroke-opacity: 0.85; stroke-width: 6; }
+}
+
+.cf-pulse-danger {
+  animation: cf-pulse-danger-anim 1.4s ease-in-out infinite;
+}
+
+@keyframes cf-pulse-danger-anim {
+  0%, 100% { stroke-opacity: 0.35; stroke-width: 2; }
+  50%      { stroke-opacity: 0.90; stroke-width: 7; }
+}
+
+.cf-pulse-amber {
+  animation: cf-pulse-amber-anim 1.8s ease-in-out infinite;
+}
+
+@keyframes cf-pulse-amber-anim {
+  0%, 100% { stroke-opacity: 0.18; stroke-width: 6; }
+  50%      { stroke-opacity: 0.55; stroke-width: 12; }
+}
+
+/* Phase 4 sub-tab pills (Transit mode) */
+.cf-pills.cf-pills-4 {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+/* Mode-pill icons sized to 18px so Lucide and FA span match. */
+.cf-pill-icon { width: 18px; height: 18px; }
+
+/* Mode legend overlay anchored bottom-right of the map */
+.cf-map-legend {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 1000;
+  background: rgba(24, 24, 27, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.cf-map-legend .cf-legend-row {
+  display: flex; align-items: center; gap: 6px; padding: 2px 0;
+}
+
+.cf-map-legend .cf-legend-swatch {
+  display: inline-block; width: 14px; height: 4px; border-radius: 2px;
+}
+
+/* ---------------- Route / Emergency mode controls ---------------- */
+
+.cf-pills.cf-pills-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* Dropdown look — tame Dash's default white/light palette */
+.cf-dd .Select-control,
+.cf-dd .Select-menu-outer,
+.cf-dd .Select-control input,
+.cf-dd .Select__control,
+.cf-dd .Select__menu,
+.cf-dd .Select__single-value,
+.cf-dd .Select__multi-value {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 10px !important;
+}
+
+.cf-dd .Select-control { min-height: 36px; }
+.cf-dd .Select-placeholder,
+.cf-dd .Select__placeholder { color: var(--text-muted) !important; }
+.cf-dd .Select-value-label,
+.cf-dd .Select__single-value { color: var(--text-primary) !important; }
+.cf-dd .Select-menu-outer,
+.cf-dd .Select__menu {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  z-index: 9999;
+}
+.cf-dd .Select-option,
+.cf-dd .Select__option {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-secondary) !important;
+}
+.cf-dd .Select-option.is-focused,
+.cf-dd .Select__option--is-focused {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+.cf-dd .Select-option.is-selected,
+.cf-dd .Select__option--is-selected {
+  background-color: rgba(0, 229, 255, 0.15) !important;
+  color: var(--accent) !important;
+}
+.cf-dd .Select__multi-value {
+  background-color: var(--bg-tertiary) !important;
+  border: 1px solid var(--border) !important;
+}
+.cf-dd .Select__multi-value__label { color: var(--text-primary) !important; }
+.cf-dd .Select__multi-value__remove:hover {
+  background-color: var(--danger) !important;
+  color: #fff !important;
+}
+
+.cf-radio label {
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.cf-radio input[type="radio"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.cf-radio input[type="radio"]:checked {
+  border-color: var(--accent);
+  background: radial-gradient(circle,
+              var(--accent) 0%,
+              var(--accent) 35%,
+              var(--bg-tertiary) 45%);
+}
+
+/* ---------------- Comparison strip (off-peak savings) ---------------- */
+
+.cf-comparison-strip {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(0, 229, 255, 0.06);
+  border: 1px dashed rgba(0, 229, 255, 0.30);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+
+/* ---------------- Section title (above alt-route list) ---------------- */
+
+.cf-section-title {
+  margin: 14px 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* ---------------- Alternative-route cards ---------------- */
+
+.cf-alt-card {
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+              transform 100ms ease;
+}
+
+.cf-alt-card:hover {
+  border-color: rgba(0, 229, 255, 0.45);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 229, 255, 0.20);
+}
+
+.cf-alt-card:active { transform: translateY(1px); }
+
+/* ---------------- Tabular numerals on prog-panel codes ---------------- */
+
+.cf-prog-panel code,
+.cf-prog-snippet {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- Uppercase label letter-spacing ---------------- */
+
+.cf-controls-label,
+.cf-card-title,
+.cf-section-title {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================ */
+/*  Phase 3 polish v2 — feedback, leaflet, transitions, empties */
+/* ============================================================ */
+
+/* ---------------- Global transition baseline ---------------- */
+button,
+.cf-pill,
+.cf-card,
+.cf-alt-card,
+input,
+select,
+.leaflet-control a {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 200ms ease;
+}
+
+/* ---------------- Premium-button hover/active overrides ----- */
+.cf-btn-primary:hover,
+.cf-btn-danger:hover,
+.cf-btn.cf-btn-accent:hover {
+  transform: translateY(-1px);
+}
+
+.cf-btn-primary:active,
+.cf-btn-danger:active,
+.cf-btn.cf-btn-accent:active {
+  transform: translateY(1px);
+  filter: brightness(0.92);
+  transition-duration: 80ms;
+}
+
+/* ---------------- Spinner + success-pulse keyframes --------- */
+@keyframes cf-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes cf-success-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(34, 197, 94, 0.55),
+                     inset 0 1px 0 rgba(255,255,255,0.20); }
+  70%  { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0),
+                     inset 0 1px 0 rgba(255,255,255,0.20); }
+  100% { box-shadow: 0 0 0 0   rgba(34, 197, 94, 0),
+                     inset 0 1px 0 rgba(255,255,255,0.20); }
+}
+
+.cf-btn-loading svg,
+.cf-btn-loading .iconify {
+  animation: cf-spin 0.8s linear infinite;
+}
+
+.cf-btn-success-pulse {
+  animation: cf-success-pulse 600ms ease-out 1;
+}
+
+/* ---------------- dcc.Loading dark-themed spinner ------------ */
+._dash-loading,
+._dash-loading-callback {
+  color: var(--accent) !important;
+}
+
+._dash-loading::after {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid var(--bg-tertiary);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: cf-spin 0.8s linear infinite;
+  margin: 24px auto;
+}
+
+/* ---------------- Empty state ---------------- */
+.cf-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--text-muted);
+}
+
+.cf-empty-state .cf-empty-text {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* ---------------- Leaflet zoom + attribution restyle --------- */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35) !important;
+}
+
+.leaflet-control-zoom a {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 28px !important;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--bg-secondary) !important;
+  color: var(--accent) !important;
+  border-color: rgba(0, 229, 255, 0.40) !important;
+}
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+  border-radius: 8px !important;
+}
+
+.leaflet-bar {
+  background: transparent !important;
+  border: none !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(20, 20, 22, 0.72) !important;
+  color: var(--text-muted) !important;
+  font-size: 10px !important;
+  border-radius: 6px 0 0 0;
+  padding: 2px 6px !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.leaflet-control-attribution a {
+  color: var(--text-secondary) !important;
+}
+
+/* ---------------- Programmer-mode toggle icon visibility ----- */
+.cf-toggle-label {
+  margin-left: 4px;
+  letter-spacing: 0.01em;
+}
+
+.cf-toggle-icon-off,
+.cf-toggle-icon-on {
+  opacity: 0.5;
+}
+
+/* ---------------- Standardize control radii ----------------- */
+.cf-dd .Select-control,
+.cf-dd .Select__control {
+  border-radius: 8px !important;
+}
+
+/* ---------------- Stat row: keep value monospace + RH align - */
+.cf-stat-row {
+  align-items: center;
+}
+
+/* ---------------- Loading button visual override ------------ */
+.cf-btn:disabled,
+.cf-btn[aria-disabled="true"] {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ============================================================ */
+/*  CTOS Hero overlay — Hyperspeed iframe                       */
+/* ============================================================ */
+
+.cf-hero-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: var(--bg-primary);
+  /* Subtle fade-in once the iframe loads */
+  animation: cf-hero-fadein 600ms ease-out both;
+  /* The hero unblurs internally during dismiss; the shell itself
+     fades + scales gently so the handoff to the main app reads as a
+     single continuous "snap to focus" rather than two separate UIs. */
+  transition: opacity 820ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 820ms cubic-bezier(0.16, 1, 0.3, 1),
+              filter 820ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: 50% 50%;
+  will-change: opacity, transform, filter;
+}
+
+.cf-hero-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: var(--bg-primary);
+}
+
+.cf-hero-shell.dismissed {
+  opacity: 0;
+  /* Subtle inward zoom — feels like the camera tightening focus
+     on the same map the user is about to see in sharp detail. */
+  transform: scale(1.045);
+  pointer-events: none;
+}
+
+/* Once dismissed, fully unmount so the WebGL/Leaflet layer is freed */
+.cf-hero-shell.removed {
+  display: none;
+}
+
+@keyframes cf-hero-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ============================================================ */
+/*  Egypt smart-city visual system and MapLibre cockpit          */
+/* ============================================================ */
+
+:root {
+  --bg-primary: #05070a;
+  --bg-secondary: #0b1014;
+  --bg-tertiary: #121a20;
+  --border: rgba(174, 219, 219, 0.13);
+  --text-primary: #eef7f8;
+  --text-secondary: #a7bbc0;
+  --text-muted: #6f858b;
+  --accent: #2bc9d2;
+  --accent-dim: #138994;
+  --accent-warm: #d4a64a;
+  --danger: #f15b4a;
+  --danger-dim: #b93230;
+  --success: #41d68d;
+  --road: #3f4c53;
+  --glass: rgba(8, 13, 18, 0.68);
+  --glass-strong: rgba(8, 13, 18, 0.86);
+}
+
+html, body, #react-entry-point, #_dash-app-content {
+  letter-spacing: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: 0;
+}
+
+.cf-root,
+#cf-root {
+  position: relative;
+  background:
+    radial-gradient(circle at 78% 10%, rgba(212, 166, 74, 0.08), transparent 26%),
+    radial-gradient(circle at 34% 6%, rgba(43, 201, 210, 0.10), transparent 28%),
+    var(--bg-primary);
+}
+
+#cf-root.tod-morning { --accent: #5cd7d2; --accent-warm: #d6b15e; }
+#cf-root.tod-afternoon { --accent: #48c8d4; --accent-warm: #d9b86d; }
+#cf-root.tod-evening { --accent: #2bc9d2; --accent-warm: #e0a84e; }
+#cf-root.tod-night { --accent: #35e5ef; --accent-warm: #d4a64a; }
+
+#cf-root.cf-theme-light {
+  --bg-primary: #edf4f3;
+  --bg-secondary: #f7faf9;
+  --bg-tertiary: #ffffff;
+  --border: rgba(30, 78, 88, 0.14);
+  --text-primary: #10262d;
+  --text-secondary: #435f66;
+  --text-muted: #6c858b;
+  --accent: #087d8d;
+  --accent-dim: #0a6674;
+  --accent-warm: #ad7a22;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.92);
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 78% 10%, rgba(212, 166, 74, 0.12), transparent 26%),
+    radial-gradient(circle at 34% 6%, rgba(43, 201, 210, 0.14), transparent 28%),
+    var(--bg-primary);
+}
+
+#cf-root.cf-theme-light .cf-topbar,
+#cf-root.cf-theme-light .cf-controls {
+  background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(245,250,249,0.78));
+  border-color: rgba(30, 78, 88, 0.14);
+  box-shadow: 0 12px 34px rgba(30, 78, 88, 0.10);
+}
+
+#cf-root.cf-theme-light .cf-sidebar {
+  background: linear-gradient(180deg, rgba(250,253,252,0.96), rgba(235,244,242,0.98));
+  border-color: rgba(30, 78, 88, 0.13);
+}
+
+#cf-root.cf-theme-light .cf-card,
+#cf-root.cf-theme-light .cf-pills,
+#cf-root.cf-theme-light .cf-mode-panel,
+#cf-root.cf-theme-light .cf-placeholder,
+#cf-root.cf-theme-light .cf-whatif-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(245,250,249,0.86));
+  border-color: rgba(30, 78, 88, 0.13);
+  box-shadow: 0 14px 34px rgba(30, 78, 88, 0.10), inset 0 1px 0 rgba(255,255,255,0.75);
+}
+
+#cf-root.cf-theme-light .cf-btn {
+  color: var(--text-primary);
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(232,243,241,0.92));
+}
+
+#cf-root.cf-theme-light .cf-btn.cf-btn-accent,
+#cf-root.cf-theme-light .cf-pill.active {
+  color: #086a78;
+  background: linear-gradient(180deg, rgba(43,201,210,0.18), rgba(255,255,255,0.78));
+}
+
+#cf-root.cf-theme-light .cf-dd .Select-control,
+#cf-root.cf-theme-light .cf-dd .Select-menu-outer,
+#cf-root.cf-theme-light .cf-dd .Select-control input,
+#cf-root.cf-theme-light .cf-dd .Select__control,
+#cf-root.cf-theme-light .cf-dd .Select__menu,
+#cf-root.cf-theme-light .cf-dd .Select__single-value,
+#cf-root.cf-theme-light .cf-dd .Select__multi-value,
+#cf-root.cf-theme-light .cf-dd .Select-option,
+#cf-root.cf-theme-light .cf-dd .Select__option {
+  background-color: #f8fbfa !important;
+  color: var(--text-primary) !important;
+}
+
+.cf-topbar {
+  background: linear-gradient(180deg, rgba(12, 18, 23, 0.92), rgba(8, 12, 17, 0.82));
+  border-bottom: 1px solid rgba(174, 219, 219, 0.12);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.22);
+}
+
+.cf-sidebar {
+  background:
+    linear-gradient(180deg, rgba(11, 16, 20, 0.96), rgba(7, 11, 15, 0.98)),
+    var(--bg-secondary);
+  border-right: 1px solid rgba(174, 219, 219, 0.12);
+}
+
+.cf-card,
+.cf-pills,
+.cf-mode-panel,
+.cf-placeholder {
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(18, 26, 32, 0.82), rgba(10, 15, 20, 0.82));
+  border-color: rgba(174, 219, 219, 0.12);
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.cf-controls {
+  min-height: 70px;
+  background:
+    linear-gradient(90deg, rgba(8, 13, 18, 0.96), rgba(13, 20, 25, 0.88)),
+    var(--bg-secondary);
+  border-bottom: 1px solid rgba(174, 219, 219, 0.12);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+  position: relative;
+  z-index: 12;
+}
+
+.cf-daycycle-readout {
+  min-width: 154px;
+  padding: 7px 10px;
+  border: 1px solid rgba(212, 166, 74, 0.26);
+  border-radius: 999px;
+  color: #e8c982;
+  background: rgba(212, 166, 74, 0.08);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cf-btn {
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(23, 33, 40, 0.95), rgba(12, 18, 23, 0.95));
+  border-color: rgba(174, 219, 219, 0.16);
+}
+
+.cf-btn:hover {
+  background: linear-gradient(180deg, rgba(30, 43, 50, 0.95), rgba(15, 24, 30, 0.95));
+  border-color: rgba(174, 219, 219, 0.28);
+}
+
+.cf-btn.cf-btn-accent {
+  background: linear-gradient(180deg, rgba(43, 201, 210, 0.17), rgba(12, 18, 23, 0.86));
+  border-color: rgba(43, 201, 210, 0.42);
+  color: #7df4fb;
+}
+
+.cf-btn-playing {
+  color: #071015;
+  background: linear-gradient(180deg, #d4a64a, #a97724);
+  border-color: rgba(245, 214, 111, 0.62);
+  box-shadow: 0 0 0 1px rgba(245, 214, 111, 0.14), 0 8px 28px rgba(212, 166, 74, 0.22);
+}
+
+.cf-map-wrap {
+  background: #05070a;
+  overflow: hidden;
+}
+
+.cf-sidebar,
+.cf-controls,
+.cf-topbar {
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.cf-card-title,
+.cf-controls-label,
+.cf-phase-label {
+  color: rgba(212, 166, 74, 0.82);
+}
+
+.cf-pill {
+  border: 1px solid transparent;
+}
+
+.cf-pill.active {
+  background: linear-gradient(180deg, rgba(43, 201, 210, 0.18), rgba(43, 201, 210, 0.07));
+  color: #7df4fb;
+  border-color: rgba(43, 201, 210, 0.28);
+}
+
+.cf-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(174, 219, 219, 0.16);
+}
+
+.cf-card {
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.cf-card:hover {
+  border-color: rgba(174, 219, 219, 0.18);
+}
+
+.cf-map-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #05070a;
+  z-index: 1;
+}
+
+.cf-maplibre-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #05070a;
+  z-index: 1;
+}
+
+.cf-map-stage .leaflet-container,
+.cf-map-wrap .leaflet-container#cairo-map {
+  position: absolute !important;
+  left: -10000px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.cf-whatif-panel {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 80;
+  width: min(392px, calc(100vw - 430px));
+  max-height: calc(100% - 36px);
+  overflow: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(18px);
+  transition: opacity 220ms ease, transform 220ms ease;
+  padding: 14px;
+  border: 1px solid rgba(174, 219, 219, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(9, 15, 20, 0.84), rgba(5, 9, 13, 0.92)),
+    var(--glass);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.cf-whatif-panel.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.cf-whatif-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--accent-warm);
+  margin-bottom: 12px;
+}
+
+.cf-panel-eyebrow {
+  display: block;
+  color: var(--accent-warm);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cf-panel-title {
+  margin: 2px 0 0 0;
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.cf-scenario-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cf-scenario-reset {
+  grid-column: 1 / -1;
+  appearance: none;
+  border: 1px solid rgba(212, 166, 74, 0.28);
+  border-radius: 8px;
+  background: rgba(212, 166, 74, 0.10);
+  color: #f5d66f;
+  padding: 9px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: center;
+  transition: background 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+
+.cf-scenario-reset:hover {
+  background: rgba(212, 166, 74, 0.16);
+  border-color: rgba(212, 166, 74, 0.46);
+  transform: translateY(-1px);
+}
+
+.cf-scenario-btn {
+  appearance: none;
+  text-align: left;
+  border: 1px solid rgba(174, 219, 219, 0.12);
+  border-radius: 8px;
+  background: rgba(15, 24, 30, 0.68);
+  color: var(--text-primary);
+  padding: 10px;
+  min-height: 72px;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.cf-scenario-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(212, 166, 74, 0.38);
+  background: rgba(21, 31, 38, 0.84);
+}
+
+.cf-scenario-name,
+.cf-scenario-desc {
+  display: block;
+}
+
+.cf-scenario-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f3f7f7;
+}
+
+.cf-scenario-desc {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(238, 247, 248, 0.62);
+}
+
+.cf-whatif-result {
+  margin-top: 12px;
+  border-top: 1px solid rgba(174, 219, 219, 0.12);
+  padding-top: 12px;
+  color: rgba(238, 247, 248, 0.72);
+  font-size: 12px;
+}
+
+.cf-whatif-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.cf-whatif-active {
+  color: #f5d66f;
+  font-weight: 800;
+}
+
+.cf-whatif-source {
+  color: rgba(238, 247, 248, 0.52);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cf-whatif-impact {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(212, 166, 74, 0.10);
+  border: 1px solid rgba(212, 166, 74, 0.22);
+  color: #f5d66f;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.cf-whatif-route {
+  color: rgba(238, 247, 248, 0.72);
+  margin-bottom: 4px;
+}
+
+.cf-whatif-path {
+  color: var(--accent);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.cf-logo-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(2, 6, 10, 0.54);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: opacity 220ms ease;
+}
+
+.cf-logo-preview.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cf-logo-preview-card {
+  width: min(420px, calc(100vw - 44px));
+  padding: 24px;
+  border-radius: 18px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--glass-strong), rgba(7, 12, 17, 0.94));
+  border: 1px solid rgba(174, 219, 219, 0.18);
+  box-shadow: 0 30px 90px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.08);
+  transform: scale(0.96) translateY(8px);
+  transition: transform 220ms cubic-bezier(0.16,1,0.3,1);
+}
+
+.cf-logo-preview.open .cf-logo-preview-card {
+  transform: scale(1) translateY(0);
+}
+
+.cf-logo-preview-image {
+  width: min(260px, 66vw);
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.42);
+}
+
+.cf-logo-preview-title {
+  margin-top: 16px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.cf-logo-preview-subtitle {
+  margin-top: 4px;
+  color: var(--accent-warm);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cf-logo-preview-close {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(174, 219, 219, 0.16);
+  color: var(--text-primary);
+  background: var(--glass-strong);
+  cursor: pointer;
+}
+
+#cf-root.cf-theme-light .cf-logo-preview {
+  background: rgba(234, 243, 241, 0.58);
+}
+
+#cf-root.cf-theme-light .cf-logo-preview-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,248,246,0.94));
+  box-shadow: 0 30px 90px rgba(30,78,88,0.20), inset 0 1px 0 rgba(255,255,255,0.86);
+}
+
+.cf-sidebar {
+  transition:
+    width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    min-width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    padding 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease,
+    border-color 220ms ease;
+}
+
+.cf-btn-loading {
+  position: relative;
+  pointer-events: none;
+  filter: saturate(1.04) brightness(1.04);
+}
+
+.cf-btn-loading::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  margin-left: 8px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  display: inline-block;
+  vertical-align: -2px;
+  animation: cf-spin 0.72s linear infinite;
+}
+
+@media (max-width: 920px) {
+  .cf-controls {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .cf-daycycle-readout {
+    order: 5;
+    flex: 1 0 180px;
+  }
+  .cf-whatif-panel {
+    left: 14px;
+    right: 14px;
+    width: auto;
+  }
+  .cf-scenario-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
+  .cf-controls-label {
+    max-width: 52px;
+    line-height: 1.2;
+  }
+  .cf-slider-wrap {
+    min-width: 170px;
+    max-width: 190px;
+  }
+  .rc-slider-mark-text {
+    display: none !important;
+  }
+  .cf-daycycle-readout {
+    min-width: 146px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+}
+
+/* ---------------- Final approved shell behavior ---------------- */
+
+#cf-root {
+  --cf-sidebar-width: 360px;
+}
+
+#cf-root .cf-shell {
+  display: grid;
+  grid-template-columns: var(--cf-sidebar-width) minmax(0, 1fr);
+  transition: grid-template-columns 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#cf-root .cf-sidebar {
+  position: relative;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none;
+  padding: 18px;
+  overflow-x: hidden;
+  opacity: 1 !important;
+}
+
+#cf-root .cf-main {
+  min-width: 0;
+}
+
+.cf-sidebar-chrome {
+  position: sticky;
+  top: -18px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  margin: -6px -6px 10px;
+  padding: 6px 6px 10px;
+  background: linear-gradient(180deg, rgba(8, 13, 18, 0.96), rgba(8, 13, 18, 0.68) 78%, rgba(8, 13, 18, 0));
+}
+
+.cf-sidebar-chrome-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cf-sidebar-toggle {
+  appearance: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(174, 219, 219, 0.18);
+  border-radius: 9px;
+  color: var(--text-primary);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+    rgba(11, 18, 24, 0.82);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06);
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  transition: transform 170ms ease, border-color 170ms ease, background 170ms ease, color 170ms ease;
+}
+
+.cf-sidebar-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(43, 201, 210, 0.38);
+  transform: translateY(-1px);
+}
+
+.cf-sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -9px;
+  z-index: 45;
+  width: 18px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.cf-sidebar-resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(43,201,210,0), rgba(43,201,210,0.42), rgba(212,166,74,0.24), rgba(43,201,210,0));
+  opacity: 0.56;
+  transition: opacity 170ms ease, width 170ms ease, box-shadow 170ms ease;
+}
+
+.cf-sidebar-resize-handle:hover::before,
+body.cf-sidebar-resizing .cf-sidebar-resize-handle::before {
+  width: 3px;
+  opacity: 1;
+  box-shadow: 0 0 16px rgba(43,201,210,0.34);
+}
+
+body.cf-sidebar-resizing,
+body.cf-sidebar-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+#cf-root.cf-sidebar-collapsed .cf-sidebar {
+  padding: 8px !important;
+  border-right-color: rgba(174, 219, 219, 0.12);
+  overflow: hidden;
+}
+
+#cf-root.cf-sidebar-collapsed .cf-sidebar-chrome {
+  top: -8px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+#cf-root.cf-sidebar-collapsed .cf-sidebar-chrome-label {
+  display: none;
+}
+
+#cf-root.cf-sidebar-collapsed .cf-sidebar > :not(.cf-sidebar-chrome):not(.cf-sidebar-resize-handle) {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#cf-root.cf-sidebar-collapsed .cf-sidebar-toggle {
+  width: 38px;
+  height: 38px;
+}
+
+#cf-root.cf-sidebar-collapsed .cf-sidebar-resize-handle {
+  right: -9px;
+}
+
+#cf-root .cf-sidebar,
+#cf-root .cf-topbar,
+#cf-root .cf-controls,
+#cf-root .cf-card,
+#cf-root .cf-pills,
+#cf-root .cf-mode-panel,
+#cf-root .cf-placeholder,
+#cf-root .cf-whatif-panel,
+#cf-root .cf-btn,
+#cf-root .cf-map-wrap {
+  transition:
+    background 240ms ease,
+    color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+/* Light mode must theme the whole product shell, not just the map iframe. */
+#cf-root.cf-theme-light {
+  --bg-primary: #eef5f3;
+  --bg-secondary: #f8fbfa;
+  --bg-tertiary: #ffffff;
+  --border: rgba(24, 76, 87, 0.15);
+  --text-primary: #0f2930;
+  --text-secondary: #365960;
+  --text-muted: #687f86;
+  --accent: #087f8f;
+  --accent-dim: #0c6c78;
+  --accent-warm: #a97520;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(8, 125, 141, 0.12), transparent 25%),
+    linear-gradient(180deg, #f7fbfa 0%, #e9f2f0 100%);
+}
+
+#cf-root.cf-theme-light .cf-shell,
+#cf-root.cf-theme-light .cf-main,
+#cf-root.cf-theme-light .cf-map-wrap {
+  background:
+    radial-gradient(circle at 76% 8%, rgba(212,166,74,0.12), transparent 24%),
+    linear-gradient(180deg, #f4faf8 0%, #e7f0ef 100%);
+  color: var(--text-primary);
+}
+
+#cf-root.cf-theme-light .cf-topbar,
+#cf-root.cf-theme-light .cf-controls,
+#cf-root.cf-theme-light .cf-sidebar {
+  color: var(--text-primary);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.94), rgba(244,249,248,0.88));
+  border-color: rgba(24, 76, 87, 0.14);
+  box-shadow: 0 12px 32px rgba(24, 76, 87, 0.10);
+}
+
+#cf-root.cf-theme-light .cf-sidebar-chrome {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,252,251,0.78) 78%, rgba(248,252,251,0));
+}
+
+#cf-root.cf-theme-light .cf-sidebar-toggle,
+#cf-root.cf-theme-light .cf-theme-toggle,
+#cf-root.cf-theme-light .cf-trace-toggle,
+#cf-root.cf-theme-light .cf-btn,
+#cf-root.cf-theme-light .cf-scenario-btn,
+#cf-root.cf-theme-light .cf-scenario-reset,
+#cf-root.cf-theme-light button {
+  color: var(--text-primary);
+  border-color: rgba(24, 76, 87, 0.14);
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(232,243,241,0.90));
+}
+
+#cf-root.cf-theme-light .cf-card,
+#cf-root.cf-theme-light .cf-pills,
+#cf-root.cf-theme-light .cf-mode-panel,
+#cf-root.cf-theme-light .cf-placeholder,
+#cf-root.cf-theme-light .cf-whatif-panel,
+#cf-root.cf-theme-light .cf-prog-panel,
+#cf-root.cf-theme-light .cf-alt-card,
+#cf-root.cf-theme-light .cf-empty-state,
+#cf-root.cf-theme-light .cf-map-legend,
+#cf-root.cf-theme-light .cf-kpi,
+#cf-root.cf-theme-light .cf-result-row,
+#cf-root.cf-theme-light .cf-section,
+#cf-root.cf-theme-light .cf-panel {
+  color: var(--text-primary);
+  background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(244,249,248,0.84));
+  border-color: rgba(24, 76, 87, 0.13);
+  box-shadow: 0 14px 30px rgba(24, 76, 87, 0.08), inset 0 1px 0 rgba(255,255,255,0.75);
+}
+
+#cf-root.cf-theme-light .cf-btn.cf-btn-accent,
+#cf-root.cf-theme-light .cf-pill.active,
+#cf-root.cf-theme-light .cf-segment input:checked + label,
+#cf-root.cf-theme-light .cf-mode-tab.active {
+  color: #075f6b;
+  background: linear-gradient(180deg, rgba(43,201,210,0.22), rgba(255,255,255,0.86));
+  border-color: rgba(8,125,141,0.28);
+  box-shadow: 0 10px 22px rgba(8,125,141,0.12), inset 0 1px 0 rgba(255,255,255,0.84);
+}
+
+#cf-root.cf-theme-light .cf-dd .Select-control,
+#cf-root.cf-theme-light .cf-dd .Select-menu-outer,
+#cf-root.cf-theme-light .cf-dd .Select-value,
+#cf-root.cf-theme-light .cf-dd .Select-placeholder,
+#cf-root.cf-theme-light .cf-dd .Select-input,
+#cf-root.cf-theme-light .cf-dd .Select-input input,
+#cf-root.cf-theme-light .cf-dd .Select__control,
+#cf-root.cf-theme-light .cf-dd .Select__menu,
+#cf-root.cf-theme-light .cf-dd .Select__single-value,
+#cf-root.cf-theme-light .cf-dd .Select__multi-value,
+#cf-root.cf-theme-light .cf-dd .Select-option,
+#cf-root.cf-theme-light .cf-dd .Select__option,
+#cf-root.cf-theme-light input,
+#cf-root.cf-theme-light select,
+#cf-root.cf-theme-light textarea {
+  color: var(--text-primary) !important;
+  background: #fbfefd !important;
+  border-color: rgba(24, 76, 87, 0.16) !important;
+}
+
+#cf-root.cf-theme-light .cf-dd .Select-placeholder,
+#cf-root.cf-theme-light .cf-muted,
+#cf-root.cf-theme-light .cf-card-subtitle,
+#cf-root.cf-theme-light .cf-meta,
+#cf-root.cf-theme-light .cf-sidebar-chrome-label,
+#cf-root.cf-theme-light .cf-controls-label {
+  color: var(--text-muted) !important;
+}
+
+#cf-root.cf-theme-light .cf-card-title,
+#cf-root.cf-theme-light .cf-phase-label,
+#cf-root.cf-theme-light .cf-brand-subtitle {
+  color: #986a1d;
+}
+
+#cf-root.cf-theme-light .cf-logo-button {
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(232,243,241,0.88));
+  border-color: rgba(8,125,141,0.18);
+  box-shadow: 0 10px 24px rgba(24,76,87,0.12), inset 0 1px 0 rgba(255,255,255,0.76);
+}
+
+#cf-root.cf-theme-light .cf-logo-preview {
+  background: rgba(237, 247, 245, 0.64);
+}
+
+#cf-root.cf-theme-light .cf-logo-preview-card {
+  color: var(--text-primary);
+  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(239,248,246,0.94));
+  border-color: rgba(24, 76, 87, 0.14);
+}

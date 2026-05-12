@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CairoFlow MapLibre View</title>
+  <link href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    :root {
+      --hud-bg: rgba(255,255,255,0.78);
+      --hud-border: rgba(20,45,56,0.16);
+      --hud-text: #10262d;
+      --hud-muted: rgba(16,38,45,0.68);
+      --accent: #087d8d;
+      --gold: #b47b1c;
+      --danger: #c6483a;
+      --map-glow: rgba(8,125,141,0.12);
+    }
+
+    html, body, #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #e7edf0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      transition: background 600ms ease;
+    }
+
+    body.ui-light {
+      --hud-bg: rgba(255,255,255,0.84);
+      --hud-border: rgba(20,45,56,0.14);
+      --hud-text: #10262d;
+      --hud-muted: rgba(16,38,45,0.66);
+    }
+
+    body.ui-dark {
+      --hud-bg: rgba(4,10,16,0.78);
+      --hud-border: rgba(86,226,239,0.20);
+      --hud-text: #eefbff;
+      --hud-muted: rgba(238,251,255,0.68);
+    }
+
+    .map-grade,
+    .map-vignette {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      transition: opacity 650ms ease, background 650ms ease;
+    }
+
+    .map-grade { opacity: 0.12; mix-blend-mode: multiply; }
+    .map-vignette {
+      opacity: 0.10;
+      background: radial-gradient(circle at 48% 38%, transparent 0 54%, rgba(2, 9, 14, 0.26) 100%);
+    }
+
+    body.tod-morning {
+      --hud-bg: rgba(255,255,255,0.82);
+      --hud-border: rgba(8,125,141,0.18);
+      --hud-text: #10262d;
+      --hud-muted: rgba(16,38,45,0.64);
+      --accent: #088a9b;
+      --gold: #b78524;
+      --danger: #c84d3e;
+      background: #dcecef;
+    }
+    body.tod-morning .map-grade {
+      opacity: 0.16;
+      background: linear-gradient(180deg, rgba(255,255,255,0.36), rgba(143,210,215,0.14));
+      mix-blend-mode: screen;
+    }
+
+    body.tod-afternoon {
+      --hud-bg: rgba(255,255,255,0.86);
+      --hud-border: rgba(8,125,141,0.16);
+      --hud-text: #0e232a;
+      --hud-muted: rgba(14,35,42,0.66);
+      --accent: #05778a;
+      --gold: #a9751f;
+      --danger: #bc4035;
+      background: #eef4f4;
+    }
+    body.tod-afternoon .map-grade {
+      opacity: 0.08;
+      background: linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.08));
+      mix-blend-mode: screen;
+    }
+
+    body.tod-evening {
+      --hud-bg: rgba(34,22,13,0.72);
+      --hud-border: rgba(220,156,61,0.24);
+      --hud-text: #fff2d6;
+      --hud-muted: rgba(255,242,214,0.68);
+      --accent: #25b8c6;
+      --gold: #e4a84c;
+      --danger: #e05a43;
+      background: #231811;
+    }
+    body.tod-evening .map-grade {
+      opacity: 0.38;
+      background:
+        radial-gradient(circle at 36% 24%, rgba(255,181,86,0.28), transparent 34%),
+        linear-gradient(180deg, rgba(255,192,111,0.14), rgba(49,24,13,0.36));
+      mix-blend-mode: multiply;
+    }
+    body.tod-evening .map-vignette { opacity: 0.22; }
+
+    body.tod-night {
+      --hud-bg: rgba(3,9,16,0.76);
+      --hud-border: rgba(86,226,239,0.22);
+      --hud-text: #eefbff;
+      --hud-muted: rgba(238,251,255,0.68);
+      --accent: #48e5f0;
+      --gold: #d7a448;
+      --danger: #ff6354;
+      background: #030910;
+    }
+    body.tod-night .map-grade {
+      opacity: 0.52;
+      background:
+        radial-gradient(circle at 45% 45%, rgba(72,229,240,0.15), transparent 34%),
+        linear-gradient(180deg, rgba(2,9,18,0.34), rgba(0,2,7,0.62));
+      mix-blend-mode: multiply;
+    }
+    body.tod-night .map-vignette { opacity: 0.34; }
+
+    body.ui-light {
+      --hud-bg: rgba(255,255,255,0.86);
+      --hud-border: rgba(20,45,56,0.15);
+      --hud-text: #10262d;
+      --hud-muted: rgba(16,38,45,0.68);
+    }
+    body.ui-dark {
+      --hud-bg: rgba(4,10,16,0.78);
+      --hud-border: rgba(86,226,239,0.20);
+      --hud-text: #eefbff;
+      --hud-muted: rgba(238,251,255,0.68);
+    }
+
+    .cf-map-hud,
+    .cf-route-card,
+    .cf-race-card,
+    .cf-map-legend,
+    .cf-map-tools,
+    .cf-display-panel,
+    .cf-map-warning {
+      position: absolute;
+      z-index: 4;
+      color: var(--hud-text);
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+      backdrop-filter: blur(16px) saturate(1.15);
+      -webkit-backdrop-filter: blur(16px) saturate(1.15);
+      border-radius: 8px;
+    }
+
+    .cf-map-hud {
+      left: 18px;
+      top: 18px;
+      padding: 12px 14px;
+      min-width: 252px;
+    }
+
+    .cf-map-kicker,
+    .cf-map-source {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .cf-map-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    .cf-map-meta,
+    .cf-map-source {
+      margin-top: 6px;
+      color: var(--hud-muted);
+      font-size: 12px;
+    }
+
+    .cf-map-source {
+      color: var(--gold);
+      font-size: 9px;
+      margin-top: 8px;
+    }
+
+    .cf-mini-timeline {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .cf-mini-track {
+      height: 4px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(8,125,141,0.14);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .cf-mini-track i {
+      display: block;
+      opacity: 0.35;
+      transition: opacity 280ms ease, background 280ms ease;
+    }
+    .cf-mini-track i:nth-child(1) { background: #75d8d1; }
+    .cf-mini-track i:nth-child(2) { background: #2baec0; }
+    .cf-mini-track i:nth-child(3) { background: #d6a147; }
+    .cf-mini-track i:nth-child(4) { background: #55f4ff; }
+    body.tod-morning .cf-mini-track i:nth-child(1),
+    body.tod-afternoon .cf-mini-track i:nth-child(2),
+    body.tod-evening .cf-mini-track i:nth-child(3),
+    body.tod-night .cf-mini-track i:nth-child(4) { opacity: 1; }
+
+    .cf-mini-time {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--hud-muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .cf-map-tools {
+      right: 16px;
+      top: 16px;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+      width: 174px;
+    }
+
+    .cf-display-panel {
+      right: 16px;
+      top: 330px;
+      width: 216px;
+      padding: 10px;
+      display: none;
+      gap: 9px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px) scale(0.98);
+      transform-origin: top right;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .cf-display-panel.open {
+      display: grid;
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .cf-display-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--gold);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .cf-display-presets,
+    .cf-display-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .cf-display-presets {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .cf-display-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cf-tool-btn {
+      appearance: none;
+      border: 1px solid rgba(8,125,141,0.16);
+      background: rgba(255,255,255,0.38);
+      color: var(--hud-text);
+      border-radius: 7px;
+      padding: 7px 8px;
+      font: 700 11px/1.1 Inter, sans-serif;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+    }
+    body.tod-night .cf-tool-btn,
+    body.tod-evening .cf-tool-btn {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.10);
+    }
+    .cf-tool-btn:hover,
+    .cf-tool-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(8,125,141,0.12);
+    }
+
+    .cf-display-chip {
+      appearance: none;
+      border: 1px solid rgba(8,125,141,0.15);
+      background: rgba(255,255,255,0.32);
+      color: var(--hud-muted);
+      border-radius: 999px;
+      padding: 6px 8px;
+      font: 800 10px/1 Inter, sans-serif;
+      cursor: pointer;
+      transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, color 150ms ease;
+    }
+    body.tod-night .cf-display-chip,
+    body.tod-evening .cf-display-chip {
+      background: rgba(255,255,255,0.06);
+    }
+    .cf-display-chip:hover,
+    .cf-display-chip.active {
+      color: var(--accent);
+      border-color: rgba(8,125,141,0.42);
+      background: rgba(8,125,141,0.13);
+      transform: translateY(-1px);
+    }
+
+    .cf-route-card {
+      left: 18px;
+      bottom: 18px;
+      width: min(330px, calc(100vw - 38px));
+      padding: 12px 14px;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+    .cf-route-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--accent);
+      opacity: 0.92;
+    }
+    .cf-route-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .cf-race-card {
+      display: none !important;
+      left: 50%;
+      top: 18px;
+      width: min(330px, calc(100vw - 40px));
+      padding: 12px 14px;
+      transform: translate(-50%, -12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 240ms ease, transform 240ms ease;
+    }
+    .cf-race-card.visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .cf-race-title {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .cf-race-meta {
+      margin-top: 6px;
+      display: grid;
+      gap: 5px;
+      color: var(--hud-muted);
+      font-size: 11px;
+    }
+    .cf-race-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .cf-race-row strong {
+      color: var(--hud-text);
+      font-weight: 900;
+    }
+    .cf-route-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .cf-route-meta {
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--hud-muted);
+    }
+    .cf-route-impact {
+      margin-top: 8px;
+      display: inline-flex;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .cf-route-card[data-kind="race"] .cf-route-title,
+    .cf-route-card[data-kind="route"] .cf-route-title { color: var(--accent); }
+    .cf-route-card[data-kind="emergency"] .cf-route-title { color: var(--danger); }
+    .cf-route-card[data-kind="scenario"] .cf-route-title,
+    .cf-route-card[data-kind="maintain"] .cf-route-title { color: var(--gold); }
+    .cf-route-card[data-kind="network"] .cf-route-title,
+    .cf-route-card[data-kind="transit"] .cf-route-title { color: var(--accent); }
+    .cf-route-card[data-kind="emergency"]::before { background: var(--danger); }
+    .cf-route-card[data-kind="scenario"]::before,
+    .cf-route-card[data-kind="maintain"]::before { background: var(--gold); }
+
+    .cf-map-legend {
+      right: 16px;
+      bottom: 16px;
+      display: grid;
+      gap: 6px;
+      color: var(--hud-muted);
+      font-size: 11px;
+      padding: 10px 12px;
+    }
+    .cf-map-legend span { display: inline-flex; align-items: center; gap: 8px; }
+    .cf-map-legend i { display: inline-block; width: 20px; height: 3px; border-radius: 999px; }
+
+    .cf-map-warning {
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%);
+      padding: 10px 12px;
+      max-width: 440px;
+      color: #7a4d00;
+      background: rgba(255,244,205,0.92);
+      display: none;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .cf-map-warning.visible { display: block; }
+
+    .maplibregl-ctrl-top-right { top: 16px; right: 206px; }
+    .maplibregl-ctrl-group {
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+    }
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right { display: none; }
+
+    .maplibregl-popup.cf-node-popup { z-index: 6; }
+    .cf-node-popup .maplibregl-popup-tip { border-top-color: var(--hud-bg); }
+    .cf-node-popup .maplibregl-popup-content {
+      padding: 0;
+      overflow: hidden;
+      border-radius: 10px;
+      color: var(--hud-text);
+      background: var(--hud-bg);
+      border: 1px solid var(--hud-border);
+      box-shadow: 0 18px 46px rgba(0,0,0,0.28);
+      backdrop-filter: blur(16px) saturate(1.12);
+      -webkit-backdrop-filter: blur(16px) saturate(1.12);
+    }
+    .cf-node-popup-card {
+      padding: 11px 12px 12px;
+      min-width: 210px;
+    }
+    .cf-node-popup-kicker {
+      color: var(--gold);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .cf-node-popup-title {
+      margin-top: 3px;
+      color: var(--hud-text);
+      font-size: 14px;
+      line-height: 1.2;
+      font-weight: 850;
+    }
+    .cf-node-popup-grid {
+      margin-top: 9px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 12px;
+      font-size: 11px;
+      color: var(--hud-muted);
+    }
+    .cf-node-popup-grid strong {
+      color: var(--hud-text);
+      font-weight: 800;
+      text-align: right;
+    }
+
+    @media (max-width: 860px) {
+      .cf-map-tools { width: 146px; }
+      .cf-display-panel {
+        top: 300px;
+        right: 16px;
+        width: 188px;
+        gap: 7px;
+        padding: 8px;
+      }
+      .cf-display-panel.open { display: grid; }
+      .cf-display-chip {
+        padding: 5px 6px;
+        font-size: 9px;
+      }
+      .maplibregl-ctrl-top-right { top: 168px; right: 16px; }
+      .cf-map-hud { min-width: 220px; }
+      .cf-map-legend { display: none; }
+    }
+
+    body.hide-hud .cf-map-hud,
+    body.hide-route-card .cf-route-card,
+    body.hide-race-card .cf-race-card,
+    body.hide-legend .cf-map-legend {
+      display: none;
+    }
+  </style>
+</head>
+<body class="tod-morning">
+  <div id="map"></div>
+  <div class="map-grade"></div>
+  <div class="map-vignette"></div>
+
+  <div class="cf-map-warning" id="map-warning">
+    Premium vector/3D map requires MAPTILER_KEY or MAP_STYLE_URL.
+  </div>
+
+  <div class="cf-map-hud">
+    <div class="cf-map-kicker">Egypt Smart Mobility Grid</div>
+    <div class="cf-map-title">Greater Cairo Control Map</div>
+    <div class="cf-map-meta" id="map-status">Initializing CairoFlow network...</div>
+    <div class="cf-mini-timeline" aria-hidden="true">
+      <div class="cf-mini-track"><i></i><i></i><i></i><i></i></div>
+      <div class="cf-mini-time"><span id="map-hour">06:00</span><span id="map-period">Morning</span></div>
+    </div>
+    <div class="cf-map-source" id="map-source">Vector style: loading</div>
+  </div>
+
+  <div class="cf-map-tools">
+    <button class="cf-tool-btn" data-camera="cairo">Reset Camera / Cairo</button>
+    <button class="cf-tool-btn" data-preset="Morning">Realistic Day</button>
+    <button class="cf-tool-btn" data-preset="Afternoon">Clear Afternoon</button>
+    <button class="cf-tool-btn" data-preset="Evening">Golden Evening</button>
+    <button class="cf-tool-btn" data-preset="Night">Premium Night</button>
+    <button class="cf-tool-btn" id="display-toggle" aria-expanded="false" aria-controls="display-panel">Map View</button>
+  </div>
+
+  <div class="cf-display-panel" id="display-panel" aria-label="Map display options">
+    <div class="cf-display-title"><span>Display</span><span id="display-mode-label">Presentation</span></div>
+    <div class="cf-display-presets">
+      <button class="cf-display-chip" data-display-preset="minimal">Minimal</button>
+      <button class="cf-display-chip" data-display-preset="presentation">Present</button>
+      <button class="cf-display-chip" data-display-preset="analysis">Analysis</button>
+    </div>
+    <div class="cf-display-grid">
+      <button class="cf-display-chip" data-display-toggle="hud">HUD</button>
+      <button class="cf-display-chip" data-display-toggle="cards">Results</button>
+      <button class="cf-display-chip" data-display-toggle="labels">Labels</button>
+      <button class="cf-display-chip" data-display-toggle="districts">Districts</button>
+      <button class="cf-display-chip" data-display-toggle="facilities">Facilities</button>
+      <button class="cf-display-chip" data-display-toggle="graph">Graph</button>
+      <button class="cf-display-chip" data-display-toggle="traffic">Traffic</button>
+      <button class="cf-display-chip" data-display-toggle="animations">Motion</button>
+      <button class="cf-display-chip" data-display-toggle="tracer">Tracer</button>
+      <button class="cf-display-chip" data-display-toggle="scenario">Scenario</button>
+    </div>
+  </div>
+
+  <div class="cf-route-card" id="route-card">
+    <div class="cf-route-title" id="route-title">Selected Route</div>
+    <div class="cf-route-meta" id="route-meta">Run a route to see details.</div>
+    <div class="cf-route-impact" id="route-impact"></div>
+  </div>
+
+  <div class="cf-race-card" id="race-card">
+    <div class="cf-race-title" id="race-title">Algorithm Race</div>
+    <div class="cf-race-meta" id="race-meta"></div>
+  </div>
+
+  <div class="cf-map-legend">
+    <span><i style="background:#28c7d3"></i>Selected route</span>
+    <span><i style="background:#d7a448"></i>Facilities / scenario</span>
+    <span><i style="background:#e05543"></i>Congestion / emergency</span>
+    <span><i style="background:#8ea2aa"></i>Previous route</span>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+  <script src="/assets/maplibre_view.js"></script>
+</body>
+</html>
