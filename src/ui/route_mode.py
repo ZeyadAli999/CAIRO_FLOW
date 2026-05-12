@@ -94,14 +94,19 @@ def render_route_algo_pills(active: str = "time_aware") -> html.Div:
 # Panel
 # ---------------------------------------------------------------------------
 
-def render_route_panel(active_algo: str = "time_aware") -> list:
+def render_route_panel(
+    active_algo: str = "time_aware",
+    *,
+    source: str = "1",
+    target: str = "F1",
+) -> list:
     return [
         info_card(
             title="From",
             body=dcc.Dropdown(
                 id="route-from",
                 options=node_options(),
-                value="1",
+                value=source,
                 clearable=False,
                 className="cf-dd",
             ),
@@ -111,7 +116,7 @@ def render_route_panel(active_algo: str = "time_aware") -> list:
             body=dcc.Dropdown(
                 id="route-to",
                 options=node_options(),
-                value="F1",
+                value=target,
                 clearable=False,
                 className="cf-dd",
             ),
@@ -149,17 +154,9 @@ def render_route_panel(active_algo: str = "time_aware") -> list:
             "Find Route", btn_id="route-find",
             variant="primary", icon="lucide:navigation",
         ),
-        # BONUS — race Dijkstra vs A*  +  ML forecast trigger
+        # Bonus ML forecast trigger. Race Lab now owns its separate mode.
         html.Div(
             [
-                html.Button(
-                    [cf_icon("lucide:swords", size=14,
-                             style={"marginRight": "6px"}, color="currentColor"),
-                     html.Span("Race  Dijkstra  vs  A*")],
-                    id="route-race",
-                    className="cf-btn cf-btn-accent",
-                    n_clicks=0,
-                ),
                 html.Button(
                     [cf_icon("lucide:brain", size=14,
                              style={"marginRight": "6px"}, color="currentColor"),
@@ -184,7 +181,6 @@ def render_route_panel(active_algo: str = "time_aware") -> list:
             children=html.Div(empty_state(), id="route-result-slot"),
         ),
         html.Div(id="route-alts-slot"),
-        html.Div(id="route-race-slot"),
         html.Div(id="route-prog-slot"),
     ]
 

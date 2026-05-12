@@ -531,6 +531,22 @@
     body.hide-legend .cf-map-legend {
       display: none;
     }
+
+    body.race-panel .cf-map-hud,
+    body.race-panel .cf-map-tools,
+    body.race-panel .cf-display-panel,
+    body.race-panel .cf-route-card,
+    body.race-panel .cf-race-card,
+    body.race-panel .cf-map-legend {
+      display: none !important;
+    }
+
+    body.race-panel .maplibregl-ctrl-top-right {
+      top: 10px;
+      right: 10px;
+      transform: scale(0.86);
+      transform-origin: top right;
+    }
   </style>
 </head>
 <body class="tod-morning">

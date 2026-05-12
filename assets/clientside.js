@@ -36,9 +36,11 @@ Object.assign(window.dash_clientside.cf, {
 
   /**
    * updateMapLibre(data)
-   * Sends the live Dash state into the MapLibre iframe. A few retries cover
-   * the common case where Dash computes state before the iframe finishes
-   * loading its WebGL map.
+   * Sends the live Dash state into the MapLibre iframe(s). The iframes
+   * post `cairoflow-map-ready` back when their WebGL maps finish loading;
+   * we track that and stop the retry-storm we used to do (4 posts per
+   * iframe). Each ready iframe gets exactly one post, each unready
+   * iframe gets a single deferred replay once it signals ready.
    */
   updateMapLibre: function (data) {
     if (!data) return null;
@@ -52,22 +54,66 @@ Object.assign(window.dash_clientside.cf, {
       root.classList.add('tod-' + String(data.time_of_day).toLowerCase());
     }
 
-    function post() {
-      var frame = document.getElementById('cairo-maplibre');
+    var ready = window.__cairoFlowMapReady || (window.__cairoFlowMapReady = {});
+
+    function postToFrame(frameId, message) {
+      var frame = document.getElementById(frameId);
       if (!frame || !frame.contentWindow) return;
-      frame.contentWindow.postMessage({
-        type: 'cairoflow-map-state',
-        data: window.__cairoFlowLatestMapState
-      }, '*');
+      frame.contentWindow.postMessage(message, '*');
     }
 
-    post();
-    setTimeout(post, 250);
-    setTimeout(post, 900);
-    setTimeout(post, 1800);
+    function postOnce(frameId, message) {
+      // If the iframe is already ready, post immediately and skip the
+      // retry-storm. If not ready yet, schedule two deferred attempts;
+      // the install-once message listener below will also flush on
+      // the ready handshake.
+      if (ready[frameId]) {
+        postToFrame(frameId, message);
+        return;
+      }
+      postToFrame(frameId, message);
+      setTimeout(function () { postToFrame(frameId, message); }, 350);
+      setTimeout(function () { postToFrame(frameId, message); }, 1200);
+    }
+
+    postOnce('cairo-maplibre', {
+      type: 'cairoflow-map-state',
+      data: window.__cairoFlowLatestMapState
+    });
+    ['dijkstra', 'astar'].forEach(function (panel) {
+      postOnce('race-map-' + panel, {
+        type: 'cairoflow-race-panel-state',
+        panel: panel,
+        data: window.__cairoFlowLatestMapState
+      });
+    });
     return null;
   },
 });
+
+// === Iframe ready handshake ===============================================
+// Each MapLibre iframe (main map + the two race-panel maps) posts
+// `cairoflow-map-ready` when its WebGL map finishes loading. We remember
+// which frames are ready so updateMapLibre can stop spamming retries.
+// When a frame becomes ready we flush the latest state to it immediately.
+(function installMapReadyHandshake() {
+  if (window.__cairoFlowMapReadyInstalled) return;
+  window.__cairoFlowMapReadyInstalled = true;
+  window.__cairoFlowMapReady = window.__cairoFlowMapReady || {};
+  window.addEventListener('message', function (event) {
+    var msg = event && event.data;
+    if (!msg || msg.type !== 'cairoflow-map-ready') return;
+    var frameId = msg.panel ? 'race-map-' + msg.panel : 'cairo-maplibre';
+    window.__cairoFlowMapReady[frameId] = true;
+    var frame = document.getElementById(frameId);
+    var state = window.__cairoFlowLatestMapState;
+    if (!frame || !frame.contentWindow || !state) return;
+    var message = msg.panel
+      ? { type: 'cairoflow-race-panel-state', panel: msg.panel, data: state }
+      : { type: 'cairoflow-map-state', data: state };
+    frame.contentWindow.postMessage(message, '*');
+  });
+})();
 
 // === CTOS Hero — postMessage bridge from the iframe ====================
 // The hero iframe at /assets/hero.html sends messages of the form
@@ -392,7 +438,7 @@ Object.assign(window.dash_clientside.cf, {
   if (window.__cairoFlowActionFeedbackInstalled) return;
   window.__cairoFlowActionFeedbackInstalled = true;
   var ids = [
-    'route-find', 'mst-compute', 'em-dispatch', 'route-race', 'route-ml', 'race-replay',
+    'route-find', 'mst-compute', 'em-dispatch', 'race-run', 'route-ml', 'race-replay',
     'maintain-optimize', 'transit-bus-optimize', 'transit-metro-optimize',
     'transit-mm-find', 'transit-trf-analyze', 'reset-what-if'
   ];
@@ -415,7 +461,7 @@ Object.assign(window.dash_clientside.cf, {
           btn.dataset.cfBusy = '0';
           btn.classList.remove('cf-btn-loading');
           btn.removeAttribute('aria-busy');
-        }, id === 'route-race' ? 1800 : 950);
+        }, id === 'race-run' ? 1800 : 950);
       }, true);
     });
   }

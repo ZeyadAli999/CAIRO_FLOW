@@ -37,5 +37,6 @@ MODES: list[dict[str, str]] = [
     {"id": "emergency", "label": "Emergency", "icon": "lucide:siren"},
     {"id": "maintain",  "label": "Maintain",  "icon": "lucide:wrench"},
     {"id": "transit",   "label": "Transit",   "icon": "lucide:bus"},
+    {"id": "race_lab",  "label": "Race Lab",  "icon": "lucide:swords"},
 ]
 DEFAULT_MODE: str = "route"

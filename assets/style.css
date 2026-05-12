@@ -236,6 +236,7 @@ a { color: var(--accent); text-decoration: none; }
 
 .cf-main {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
@@ -245,7 +246,7 @@ a { color: var(--accent); text-decoration: none; }
 
 .cf-pills {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   background: var(--bg-tertiary);
   padding: 4px;
@@ -446,7 +447,47 @@ a { color: var(--accent); text-decoration: none; }
 
 .cf-map-wrap {
   flex: 1;
+  min-height: 0;
   position: relative;
+}
+
+.cf-main-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.cf-main-workspace.is-race-lab {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(0, 229, 255, 0.10), transparent 25%),
+    radial-gradient(circle at 88% 0%, rgba(255, 184, 0, 0.08), transparent 22%),
+    var(--bg-primary);
+}
+
+.cf-main-workspace.is-race-lab .cf-map-wrap {
+  display: none;
+}
+
+.cf-race-view-shell {
+  display: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.cf-main-workspace.is-race-lab .cf-race-view-shell {
+  display: block;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding: 14px 14px 64px;
+  background: rgba(8, 13, 18, 0.82);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .cf-map-wrap .leaflet-container {
@@ -1979,4 +2020,617 @@ body.cf-sidebar-resizing * {
   color: var(--text-primary);
   background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(239,248,246,0.94));
   border-color: rgba(24, 76, 87, 0.14);
+}
+
+/* ---------------- Dijkstra vs A* Race Lab ---------------- */
+
+.cf-race-lab {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  align-content: start;
+  padding-bottom: 24px;
+}
+
+.cf-race-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 229, 255, 0.10), rgba(255, 184, 0, 0.06)),
+    rgba(18, 18, 21, 0.92);
+}
+
+.cf-race-hero .cf-race-heading {
+  grid-column: 1 / -1;
+}
+
+.cf-race-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.cf-race-eyebrow {
+  color: var(--accent-warm);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.cf-race-title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.cf-race-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cf-race-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 0;
+}
+
+.cf-race-map-legend {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(18, 18, 21, 0.74);
+}
+
+.cf-race-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cf-race-legend-swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  color: var(--accent);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.26);
+  text-indent: -9999px;
+}
+
+.cf-race-legend-swatch.is-astar,
+.cf-race-legend-swatch.is-target {
+  color: var(--accent-warm);
+  box-shadow: 0 0 14px rgba(255, 184, 0, 0.24);
+}
+
+.cf-race-legend-swatch.is-explored {
+  color: #9eefff;
+  background: rgba(158, 239, 255, 0.32);
+  box-shadow: 0 0 16px rgba(158, 239, 255, 0.38);
+}
+
+.cf-race-legend-swatch.is-explored-edge {
+  color: #9eefff;
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  border: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #9eefff 0 6px,
+      transparent 6px 10px
+    );
+  box-shadow: 0 0 10px rgba(158, 239, 255, 0.32);
+}
+
+.cf-race-legend-swatch.is-source {
+  color: #29d46f;
+  background: #29d46f;
+  box-shadow: 0 0 14px rgba(41, 212, 111, 0.28);
+}
+
+.cf-race-legend-swatch.is-target {
+  color: #ff5f86;
+  background: #ff5f86;
+  box-shadow: 0 0 14px rgba(255, 95, 134, 0.28);
+}
+
+.cf-race-visual-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.cf-race-difference-callout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.72fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(0, 229, 255, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 229, 255, 0.11), rgba(158, 239, 255, 0.035)),
+    rgba(18, 18, 21, 0.88);
+}
+
+.cf-race-callout-title {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.cf-race-callout-copy {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cf-race-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.cf-race-bar-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.cf-race-bar-label strong {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.cf-race-bar-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.cf-race-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #9eefff;
+  box-shadow: 0 0 14px rgba(158, 239, 255, 0.38);
+}
+
+.cf-race-bar-track.is-astar span {
+  background: linear-gradient(90deg, #9eefff, #d7a448);
+}
+
+.cf-race-meta-chip {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.cf-race-meta-label,
+.cf-race-metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cf-race-meta-value,
+.cf-race-metric-value {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cf-race-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.cf-race-map-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-height: 0;
+}
+
+.cf-race-map-panel {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(84px, 116px) clamp(300px, 34vh, 380px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(18, 18, 21, 0.92);
+}
+
+.cf-race-map-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cf-race-algo-name {
+  min-width: 0;
+}
+
+.cf-race-algo-title {
+  color: var(--text-primary);
+  font-size: 26px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.cf-race-algo-subtitle {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.cf-race-algo-caption {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cf-race-cost-chip {
+  flex: 0 0 auto;
+  min-width: 112px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 229, 255, 0.20);
+  border-radius: 8px;
+  background: rgba(0, 229, 255, 0.055);
+  text-align: right;
+}
+
+.cf-race-map-panel.is-astar .cf-race-cost-chip {
+  border-color: rgba(255, 184, 0, 0.24);
+  background: rgba(255, 184, 0, 0.055);
+}
+
+.cf-race-cost-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.cf-race-cost-value {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.cf-race-map-details {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 6px;
+  padding: 9px 10px;
+  overscroll-behavior: contain;
+}
+
+.cf-race-map-shell {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  background: #071015;
+}
+
+.cf-race-map-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #071015;
+}
+
+.cf-race-col {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(18, 18, 21, 0.94);
+}
+
+.cf-race-col-header {
+  min-height: 76px;
+  padding: 11px 12px;
+  border-top: 3px solid var(--accent);
+  border-bottom: 1px solid var(--border);
+}
+
+.cf-race-col-title {
+  display: block;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.cf-race-col-meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cf-race-canvas-wrap {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0, 229, 255, 0.08), transparent 55%),
+    #0e0e10;
+}
+
+.cf-race-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 11;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: #0e0e10;
+}
+
+.cf-race-legacy-canvases canvas {
+  width: 1px;
+  height: 1px;
+}
+
+.cf-race-metrics {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.cf-race-metric {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.cf-race-metric.is-accent {
+  border-color: rgba(0, 229, 255, 0.20);
+  background: rgba(0, 229, 255, 0.055);
+}
+
+.cf-race-metric-copy {
+  min-width: 0;
+}
+
+.cf-race-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(18, 18, 21, 0.76);
+}
+
+.cf-race-legacy-canvases {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cf-race-readout {
+  color: var(--text-secondary);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11px;
+}
+
+.cf-race-insights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cf-race-insight {
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(18, 18, 21, 0.88);
+}
+
+.cf-race-insight-region {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+
+.cf-race-insight.is-accent {
+  border-color: rgba(0, 229, 255, 0.20);
+  background: rgba(0, 229, 255, 0.045);
+}
+
+.cf-race-insight.is-winner {
+  border-color: rgba(255, 184, 0, 0.36);
+  background:
+    linear-gradient(180deg, rgba(255, 184, 0, 0.12), rgba(0, 229, 255, 0.035)),
+    rgba(18, 18, 21, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.cf-race-insight-title {
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.cf-race-insight-body {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.cf-race-section-head {
+  display: grid;
+  gap: 4px;
+  padding: 2px 2px 0;
+}
+
+.cf-race-section-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.cf-race-section-copy {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cf-race-objective {
+  display: grid;
+  gap: 12px;
+}
+
+.cf-race-objective-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.cf-race-objective-card .cf-race-metric {
+  min-height: 44px;
+}
+
+.cf-race-objective-empty {
+  padding: 12px;
+  border: 1px dashed rgba(0, 229, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 229, 255, 0.035);
+}
+
+.cf-race-side-note {
+  padding: 11px 12px;
+  border: 1px solid rgba(0, 229, 255, 0.20);
+  border-radius: 8px;
+  background: rgba(0, 229, 255, 0.045);
+}
+
+.cf-race-side-title {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.cf-race-side-copy {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cf-race-side-status {
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 720px) {
+  .cf-main-workspace.is-race-lab {
+    display: flex;
+  }
+
+  .cf-main-workspace.is-race-lab .cf-map-wrap {
+    display: none;
+  }
+
+  .cf-race-map-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-race-visual-strip,
+  .cf-race-difference-callout {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-race-map-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cf-race-map-panel {
+    grid-template-rows: auto minmax(84px, 118px) clamp(280px, 42vh, 340px);
+  }
+
+  .cf-race-grid,
+  .cf-race-meta-grid,
+  .cf-race-objective-grid,
+  .cf-race-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-race-hero {
+    grid-template-columns: 1fr;
+  }
+
 }

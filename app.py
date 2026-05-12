@@ -388,11 +388,14 @@ def _map_state_payload(
     scenario_data,
 ) -> dict:
     payload = _base_map_payload()
+    effective_tod = tod_label or TIMES_OF_DAY[0]
+    if active_mode == "race_lab" and race_data and race_data.get("time_context"):
+        effective_tod = race_data.get("time_context")
     payload.update({
         "active_mode": active_mode or DEFAULT_MODE,
-        "time_of_day": tod_label or TIMES_OF_DAY[0],
-        "time_key": _tod_key(tod_label),
-        "clock": _TOD_CLOCK.get(tod_label or TIMES_OF_DAY[0], "06:00"),
+        "time_of_day": effective_tod,
+        "time_key": _tod_key(effective_tod),
+        "clock": _TOD_CLOCK.get(effective_tod, "06:00"),
         "mst": mst_data,
         "race": race_data,
         "route": route_data,
@@ -567,6 +570,21 @@ def _switch_mode(_clicks, current_mode):
 
 
 @app.callback(
+    Output("main-workspace", "className"),
+    Output("race-lab-view", "children"),
+    Input("active-mode", "data"),
+    Input("race-data", "data"),
+)
+def _render_main_workspace(active_mode, race_data):
+    if active_mode == "race_lab":
+        from src.ui.race_view import render_race_card, render_race_empty_state
+
+        race_view = render_race_card(race_data) if race_data else render_race_empty_state()
+        return "cf-main-workspace is-race-lab", race_view
+    return "cf-main-workspace", None
+
+
+@app.callback(
     Output("time-of-day", "data"),
     Input("time-of-day-slider", "value"),
 )
@@ -600,6 +618,7 @@ def _update_time_of_day(idx):
     Output("route-alts-layer",    "children", allow_duplicate=True),
     Output("route-result",        "data",     allow_duplicate=True),
     Output("route-trace",         "data",     allow_duplicate=True),
+    Output("race-data",           "data",     allow_duplicate=True),
     # Emergency layers + stores
     Output("em-edges-layer",      "children", allow_duplicate=True),
     Output("em-glow-layer",       "children", allow_duplicate=True),
@@ -632,6 +651,7 @@ def _clear_overlays_on_mode_switch(mode: str):
         "emergency": {"em",    "mst"},
         "maintain":  {"maintain"},          # MST cleared so amber roads are clear
         "transit":   {"transit"},
+        "race_lab":  {"route", "mst", "race"},
     }.get(mode, set())
 
     def _clear(prefix: str, default):
@@ -641,10 +661,11 @@ def _clear_overlays_on_mode_switch(mode: str):
         # MST (5)
         _clear("mst", []), _clear("mst", []), _clear("mst", []),
         _clear("mst", None), _clear("mst", None),
-        # Route (6)
+        # Route layers/stores + Race Lab store (7)
         _clear("route", []), _clear("route", []),
         _clear("route", []), _clear("route", []),
         _clear("route", None), _clear("route", None),
+        _clear("race", None),
         # Emergency (6)
         _clear("em", []), _clear("em", []),
         _clear("em", []), _clear("em", []),
@@ -908,28 +929,104 @@ def _render_route_programmer_panel(programmer_on, trace_data):
 # BONUS — race Dijkstra vs A* (server compute, clientside animation)
 # ---------------------------------------------------------------------------
 
+def _explored_nodes_from_frames(result: dict) -> list:
+    frames = result.get("frames") or []
+    for frame in reversed(frames):
+        visited = frame.get("visited") if isinstance(frame, dict) else None
+        if visited:
+            return list(visited)
+    return []
+
+
 @app.callback(
-    Output("route-race-slot", "children"),
+    Output("race-run-status", "children"),
     Output("race-data",       "data"),
-    Input("route-race", "n_clicks"),
-    State("route-from", "value"),
-    State("route-to",   "value"),
-    State("route-algo", "data"),
-    State("time-of-day", "data"),
+    Input("race-run", "n_clicks"),
+    State("race-from", "value"),
+    State("race-to",   "value"),
+    State("race-cost-view", "value"),
+    State("race-tod", "value"),
     prevent_initial_call=True,
 )
-def _race_compute(_n, src, dst, algo, tod_label):
+def _run_race_lab(_n, src, dst, cost_view, tod_label):
     if not _n or not src or not dst:
         return no_update, no_update
-    from src.algorithms.race import race
-    from src.ui.race_view import render_race_card
+    from src.algorithms.race import astar_with_steps, dijkstra_with_steps, race
+    from src.ui.race_view import (
+        cost_objective_comparison,
+        render_race_sidebar_note,
+    )
     G = build_graph()
-    tod = _tod_key(tod_label) if algo == "time_aware" else None
-    bundle = race(G, src, dst,
-                  weight="distance_km" if algo != "time_aware" else "distance_km",
-                  time_of_day=tod)
-    card = render_race_card(bundle)
-    return card, bundle
+    tod_key = _tod_key(tod_label)
+    cost_view = cost_view or "algorithm"
+
+    if cost_view == "objective":
+        d_res = dijkstra_with_steps(G, src, dst, weight="distance_km")
+        a_res = astar_with_steps(G, src, dst, weight="distance_km", time_of_day=tod_key)
+        d_data = d_res.to_serializable()
+        a_data = a_res.to_serializable()
+        if a_data.get("cost") is not None:
+            a_data["cost"] = round(float(a_data["cost"]) * 60.0, 4)
+        bundle = {
+            "source": src,
+            "target": dst,
+            "weight_mode": "Distance km vs BPR travel time minutes",
+            "dijkstra": d_data,
+            "astar": a_data,
+            "agree_on_cost": False,
+            "speedup_pct_nodes": round(
+                ((d_data.get("n_frames") or 0) - (a_data.get("n_frames") or 0))
+                / max(1, (d_data.get("n_frames") or 0)) * 100.0,
+                2,
+            ),
+            "winner": "objective-specific",
+        }
+        d_cost_label = "unreachable" if d_data.get("cost") is None else f"{float(d_data['cost']):.2f} km"
+        a_cost_label = "unreachable" if a_data.get("cost") is None else f"{float(a_data['cost']):.2f} min"
+        d_subtitle = "Shortest Distance Objective"
+        a_subtitle = "Traffic-Aware Heuristic Route"
+    else:
+        bundle = race(G, src, dst, weight="distance_km", time_of_day=None)
+        d_data = bundle["dijkstra"]
+        a_data = bundle["astar"]
+        d_cost_label = "unreachable" if d_data.get("cost") is None else f"{float(d_data['cost']):.2f} km"
+        a_cost_label = "unreachable" if a_data.get("cost") is None else f"{float(a_data['cost']):.2f} km"
+        d_subtitle = "Shortest Distance Objective"
+        a_subtitle = "Heuristic-Guided Shortest Distance Objective"
+
+    d_data["explored_nodes"] = _explored_nodes_from_frames(d_data)
+    a_data["explored_nodes"] = _explored_nodes_from_frames(a_data)
+    bundle["objective_comparison"] = cost_objective_comparison(G, src, dst, tod_key)
+    bundle["cost_view"] = cost_view
+    bundle["time_context"] = tod_label or TIMES_OF_DAY[0]
+    bundle["panels"] = {
+        "dijkstra": {
+            "title": "DIJKSTRA",
+            "subtitle": d_subtitle,
+            "path": d_data.get("path"),
+            "cost_label": d_cost_label,
+            "unit": "km",
+        },
+        "astar": {
+            "title": "A* SEARCH",
+            "subtitle": a_subtitle,
+            "path": a_data.get("path"),
+            "cost_label": a_cost_label,
+            "unit": "minutes" if cost_view == "objective" else "km",
+        },
+    }
+    bundle["map_overlay"] = {
+        "source": src,
+        "target": dst,
+        "dijkstra_path": d_data.get("path"),
+        "astar_path": a_data.get("path"),
+        "dijkstra_explored_nodes": d_data.get("explored_nodes", []),
+        "astar_explored_nodes": a_data.get("explored_nodes", []),
+        "explored_node_style": "shared-soft-cyan-glow",
+        "dijkstra_color": "cyan",
+        "astar_color": "gold",
+    }
+    return render_race_sidebar_note(bundle), bundle
 
 
 app.clientside_callback(

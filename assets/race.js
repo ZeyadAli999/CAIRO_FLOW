@@ -1,5 +1,5 @@
 // CairoFlow BONUS — Dijkstra vs A* race animator (clientside).
-// Auto-loaded by Dash from /assets/. The server's `_race_compute`
+// Auto-loaded by Dash from /assets/. The server's `_run_race_lab`
 // callback writes a frames-bundle into the `race-data` Store; this
 // file picks it up via the clientside callback at the bottom of the
 // file, then animates two side-by-side <canvas> elements in lockstep.
@@ -207,12 +207,34 @@
   }
 
   function postRaceToMap(bundle) {
-    const frame = document.getElementById('cairo-maplibre');
-    if (!bundle || !frame || !frame.contentWindow) return;
-    frame.contentWindow.postMessage({
-      type: 'cairoflow-race-visual',
-      race: bundle
-    }, '*');
+    if (!bundle) return;
+    // In Race Lab mode the main MapLibre iframe is hidden via CSS, so
+    // posting `cairoflow-race-visual` to it is wasted work that still
+    // triggers a full map state recompute on a frame the user can't
+    // see. Skip it whenever we have at least one race-panel iframe
+    // mounted (= Race Lab is the active workspace).
+    const hasPanels = Boolean(
+      document.getElementById('race-map-dijkstra') ||
+      document.getElementById('race-map-astar')
+    );
+    if (!hasPanels) {
+      const main = document.getElementById('cairo-maplibre');
+      if (main && main.contentWindow) {
+        main.contentWindow.postMessage({
+          type: 'cairoflow-race-visual',
+          race: bundle
+        }, '*');
+      }
+    }
+    ['dijkstra', 'astar'].forEach((panel) => {
+      const frame = document.getElementById('race-map-' + panel);
+      if (!frame || !frame.contentWindow) return;
+      frame.contentWindow.postMessage({
+        type: 'cairoflow-race-panel-replay',
+        panel: panel,
+        data: window.__cairoFlowLatestMapState || { race: bundle }
+      }, '*');
+    });
   }
 
   NS.cf.startRace = function (bundle) {
@@ -222,6 +244,7 @@
     return null;
   };
 
+  // Dash wires the preserved `race-replay` button ID to this function.
   NS.cf.replayRace = function (n_clicks) {
     if (!n_clicks) return window.dash_clientside.no_update;
     // Read the cached bundle from a global the start callback sets.

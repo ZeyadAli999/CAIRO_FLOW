@@ -222,6 +222,13 @@ def _what_if_panel() -> html.Div:
     )
 
 
+def render_map_workspace() -> html.Div:
+    return html.Div(
+        [render_map(), _what_if_panel()],
+        className="cf-map-wrap",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Root layout
 # ---------------------------------------------------------------------------
@@ -289,9 +296,8 @@ def render_layout() -> html.Div:
                 disabled=True,
             ),
 
-            # BONUS — race + ML data stores. Server callbacks fill these,
-            # clientside animator (`assets/race.js`) reads them and paints
-            # the side-by-side race canvases.
+            # Race Lab + ML data stores. Race data is sent through the
+            # existing MapLibre bridge for the real-map overlay.
             dcc.Store(id="race-data", data=None),
             dcc.Store(id="race-effect", data=None),
             dcc.Store(id="ml-result", data=None),
@@ -304,8 +310,15 @@ def render_layout() -> html.Div:
                         [
                             _control_strip(),
                             html.Div(
-                                [render_map(), _what_if_panel()],
-                                className="cf-map-wrap",
+                                [
+                                    render_map_workspace(),
+                                    html.Div(
+                                        id="race-lab-view",
+                                        className="cf-race-view-shell",
+                                    ),
+                                ],
+                                id="main-workspace",
+                                className="cf-main-workspace",
                             ),
                         ],
                         className="cf-main",

@@ -93,6 +93,10 @@
   let lastRaceKey = "";
   let activePopup = null;
   let displayState = loadDisplayState();
+  const racePanelKind = new URLSearchParams(window.location.search).get("race_panel");
+  if (racePanelKind) {
+    document.body.classList.add("race-panel", "race-panel-" + racePanelKind);
+  }
 
   init();
 
@@ -103,28 +107,46 @@
     setText("map-source", "Vector style: " + styleChoice.label);
     hideWarning();
 
+    // Race-panel iframes are small. Avoid 3D pitch + globe projection so
+    // panning/zooming stays buttery on both mini maps in parallel.
+    const flatPanel = Boolean(racePanelKind);
     map = new maplibregl.Map({
       container: "map",
       style: styleChoice.url,
       center: CAIRO,
-      zoom: 10.4,
-      pitch: 43,
-      bearing: -8,
-      antialias: true,
-      maxPitch: 62,
-      attributionControl: false
+      zoom: flatPanel ? 10.6 : 10.4,
+      pitch: flatPanel ? 0 : 43,
+      bearing: flatPanel ? 0 : -8,
+      antialias: !flatPanel,
+      maxPitch: flatPanel ? 0 : 62,
+      attributionControl: false,
+      fadeDuration: flatPanel ? 0 : 300
     });
 
-    try { map.setProjection({ type: "globe" }); } catch (_) {}
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    if (!flatPanel) {
+      try { map.setProjection({ type: "globe" }); } catch (_) {}
+    }
+    map.addControl(new maplibregl.NavigationControl({ showCompass: !flatPanel }), "top-right");
 
     map.on("load", function () {
       buildOperationalLayers();
       mapReady = true;
       setTimeMode("Morning", false);
       applyDisplayState();
-      if (latestState) updateMap(latestState);
-      setTimeout(resetCamera, 250);
+      if (latestState) {
+        if (racePanelKind) updateRacePanelMap(latestState, racePanelKind);
+        else updateMap(latestState);
+      }
+      if (!racePanelKind) setTimeout(resetCamera, 250);
+      // Notify the parent frame so it can stop the legacy retry-storm.
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: "cairoflow-map-ready",
+            panel: racePanelKind || null
+          }, "*");
+        }
+      } catch (_) {}
     });
 
     map.on("error", function (event) {
@@ -178,6 +200,8 @@
       "cf-route-tracer": {},
       "cf-race-dijkstra": { lineMetrics: true },
       "cf-race-astar": { lineMetrics: true },
+      "cf-race-explored": {},
+      "cf-race-explored-edges": {},
       "cf-race-dijkstra-tracer": {},
       "cf-race-astar-tracer": {},
       "cf-race-labels": {}
@@ -187,7 +211,9 @@
       "cf-scenario-after", "cf-nodes", "cf-areas", "cf-facilities",
       "cf-affected", "cf-bus", "cf-metro", "cf-maintain", "cf-labels",
       "cf-active-route-nodes", "cf-route-tracer", "cf-mst",
-      "cf-race-dijkstra", "cf-race-astar", "cf-race-dijkstra-tracer", "cf-race-astar-tracer",
+      "cf-race-dijkstra", "cf-race-astar",
+      "cf-race-explored", "cf-race-explored-edges",
+      "cf-race-dijkstra-tracer", "cf-race-astar-tracer",
       "cf-race-labels"
     ].forEach(function (id) {
       if (!map.getSource(id)) {
@@ -275,15 +301,86 @@
       }
     });
 
+    // Explored-edge dark casing — a thick near-black outline that makes
+    // the bright explored-edge line pop against any basemap. No blur.
+    addLayer({
+      id: "cf-race-explored-edges-casing",
+      type: "line",
+      source: "cf-race-explored-edges",
+      paint: {
+        "line-color": "#040a12",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 6.0, 12, 8.0],
+        "line-opacity": 0.72
+      }
+    });
+
+    // Explored-edge bright line — the visible search-tree edges between
+    // visited nodes. REAL road-graph edges (filtered from data.roads by
+    // visited set). Solid line at high opacity so the professor clearly
+    // sees the search expansion shape. No blur to keep cheap.
+    addLayer({
+      id: "cf-race-explored-edges-line",
+      type: "line",
+      source: "cf-race-explored-edges",
+      paint: {
+        "line-color": "#9eefff",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.8, 12, 5.0],
+        "line-opacity": 0.97
+      }
+    });
+
+    // Explored-node halo — solid translucent ring, NO circle-blur (blur is
+    // expensive on the small race panels). The wider radius + low opacity
+    // still reads as a glow, but it costs a single circle layer.
+    addLayer({
+      id: "cf-race-explored-glow",
+      type: "circle",
+      source: "cf-race-explored",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 9.5, 12, 16.0],
+        "circle-color": "#9eefff",
+        "circle-opacity": 0.22
+      }
+    });
+
+    // Explored-node core dot — bright solid + crisp outline so the
+    // professor sees every visited node at a glance.
+    addLayer({
+      id: "cf-race-explored-dot",
+      type: "circle",
+      source: "cf-race-explored",
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 5.2, 12, 7.6],
+        "circle-color": "#9eefff",
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 1.4,
+        "circle-opacity": 0.96
+      }
+    });
+
     addLayer({
       id: "cf-race-dijkstra-glow",
       type: "line",
       source: "cf-race-dijkstra",
       paint: {
-        "line-color": "#d7a448",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.0, 12, 13.0],
-        "line-opacity": 0.28,
-        "line-blur": 1.9
+        "line-color": "#2bc9d2",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 6.4, 12, 11.6],
+        "line-opacity": 0.32,
+        "line-blur": 0.6
+      }
+    });
+
+    // Dark navy casing — separates the bright Dijkstra line from the
+    // pale road basemap and explored edges. Extra-thick so the final
+    // path dominates the visual hierarchy. No blur.
+    addLayer({
+      id: "cf-race-dijkstra-casing",
+      type: "line",
+      source: "cf-race-dijkstra",
+      paint: {
+        "line-color": "#031018",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 12.0, 12, 16.0],
+        "line-opacity": 0.88
       }
     });
 
@@ -292,10 +389,9 @@
       type: "line",
       source: "cf-race-dijkstra",
       paint: {
-        "line-color": "#d7a448",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 12, 5.8],
-        "line-opacity": 0.96,
-        "line-dasharray": [1.2, 0.7]
+        "line-color": "#2bc9d2",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.0, 12, 10.0],
+        "line-opacity": 1.0
       }
     });
 
@@ -304,10 +400,21 @@
       type: "line",
       source: "cf-race-astar",
       paint: {
-        "line-color": "#2bc9d2",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.4, 12, 13.6],
-        "line-opacity": 0.31,
-        "line-blur": 1.9
+        "line-color": "#d7a448",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 6.8, 12, 12.2],
+        "line-opacity": 0.34,
+        "line-blur": 0.6
+      }
+    });
+
+    addLayer({
+      id: "cf-race-astar-casing",
+      type: "line",
+      source: "cf-race-astar",
+      paint: {
+        "line-color": "#1a0e02",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 12.0, 12, 16.0],
+        "line-opacity": 0.88
       }
     });
 
@@ -316,9 +423,9 @@
       type: "line",
       source: "cf-race-astar",
       paint: {
-        "line-color": "#2bc9d2",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.4, 12, 6.2],
-        "line-opacity": 0.97
+        "line-color": "#ffb524",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 7.0, 12, 10.0],
+        "line-opacity": 1.0
       }
     });
 
@@ -329,7 +436,7 @@
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 6.0, 12, 9.2],
         "circle-color": "#fff7df",
-        "circle-stroke-color": "#d7a448",
+        "circle-stroke-color": "#2bc9d2",
         "circle-stroke-width": 3.0,
         "circle-opacity": 0.96
       }
@@ -342,7 +449,7 @@
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 6.2, 12, 9.6],
         "circle-color": "#effdff",
-        "circle-stroke-color": "#2bc9d2",
+        "circle-stroke-color": "#d7a448",
         "circle-stroke-width": 3.0,
         "circle-opacity": 0.98
       }
@@ -364,8 +471,8 @@
       paint: {
         "text-color": [
           "case",
-          ["==", ["get", "algorithm"], "Dijkstra"], "#d7a448",
-          "#2bc9d2"
+          ["==", ["get", "algorithm"], "Dijkstra"], "#2bc9d2",
+          "#d7a448"
         ],
         "text-halo-color": "rgba(3, 9, 14, 0.86)",
         "text-halo-width": 1.6,
@@ -480,10 +587,22 @@
       source: "cf-start-end",
       paint: {
         "circle-radius": ["case", ["==", ["get", "role"], "start"], 12, 14],
-        "circle-color": ["case", ["==", ["get", "role"], "start"], "#1bc7d4", "#d7a448"],
-        "circle-opacity": 0.16,
+        "circle-color": [
+          "case",
+          ["all", ["==", ["get", "race"], true], ["==", ["get", "role"], "start"]], "#29d46f",
+          ["all", ["==", ["get", "race"], true], ["==", ["get", "role"], "end"]], "#ff5f86",
+          ["==", ["get", "role"], "start"], "#1bc7d4",
+          "#d7a448"
+        ],
+        "circle-opacity": 0.18,
         "circle-stroke-width": 1,
-        "circle-stroke-color": ["case", ["==", ["get", "role"], "start"], "#1bc7d4", "#d7a448"]
+        "circle-stroke-color": [
+          "case",
+          ["all", ["==", ["get", "race"], true], ["==", ["get", "role"], "start"]], "#29d46f",
+          ["all", ["==", ["get", "race"], true], ["==", ["get", "role"], "end"]], "#ff5f86",
+          ["==", ["get", "role"], "start"], "#1bc7d4",
+          "#d7a448"
+        ]
       }
     });
 
@@ -493,7 +612,13 @@
       source: "cf-start-end",
       paint: {
         "circle-radius": ["case", ["==", ["get", "role"], "start"], 5.5, 6.2],
-        "circle-color": ["case", ["==", ["get", "role"], "start"], "#1bc7d4", "#d7a448"],
+        "circle-color": [
+          "case",
+          ["all", ["==", ["get", "race"], true], ["==", ["get", "role"], "start"]], "#29d46f",
+          ["all", ["==", ["get", "race"], true], ["==", ["get", "role"], "end"]], "#ff5f86",
+          ["==", ["get", "role"], "start"], "#1bc7d4",
+          "#d7a448"
+        ],
         "circle-stroke-width": 2,
         "circle-stroke-color": "#ffffff",
         "circle-opacity": 0.96
@@ -1024,7 +1149,13 @@
     setSource("cf-mst", pathFeaturesFromEdges(data.mst && data.mst.selected_edges, nodeById, { kind: "mst" }));
     updateRouteVisuals(heroPath, nodeById);
     setSource("cf-active-route-nodes", activeRouteNodeFeatures(heroPath, nodeById));
-    setSource("cf-start-end", startEndFeatures(data.active_mode === "route" ? data.route : null, nodeById, heroPath));
+    const raceForMode = data.active_mode === "race_lab" ? data.race : null;
+    const markerRoute = data.active_mode === "route"
+      ? data.route
+      : raceForMode
+        ? { src: raceForMode.source, dst: raceForMode.target }
+        : null;
+    setSource("cf-start-end", startEndFeatures(markerRoute, nodeById, heroPath));
     setSource("cf-scenario-before", pathFeature(scenario && scenario.before_path, nodeById, { kind: "before" }));
     setSource("cf-scenario-after", pathFeature(scenario && scenario.after_path, nodeById, { kind: "after" }));
     setSource("cf-maintain", maintainFeatures(data, nodeById));
@@ -1033,7 +1164,7 @@
     setSource("cf-nodes", pointFeatures((data.nodes || []).filter(function (n) { return n.kind === "neighborhood"; })));
     setSource("cf-facilities", pointFeatures((data.nodes || []).filter(function (n) { return n.kind === "facility"; })));
     setSource("cf-areas", areaFeatures(data.nodes || []));
-    if (data.active_mode === "route") {
+    if (data.active_mode === "race_lab") {
       updateRaceVisual(data.race, nodeById);
     } else {
       clearRaceVisual();
@@ -1051,6 +1182,325 @@
     updateStatus(data);
     updateRouteCard(data);
     if (!cameraSettled && data.nodes && data.nodes.length) resetCamera();
+  }
+
+  // Cache key for the heavy base-layer (roads/nodes/areas) refresh in
+  // race-panel mode. The clientside bridge fan-out fires 4 retries per
+  // state change; without this dedup we rebuild ~30 road LineStrings,
+  // ~25 nodes, ~25 facilities and ~25 area polygons four times per
+  // state change per panel. With this dedup we do it exactly once.
+  let lastRacePanelBaseKey = "";
+  let lastRacePanelOverlayKey = "";
+
+  function updateRacePanelMap(data, panelKind, forceReplay) {
+    latestState = data;
+    if (!mapReady || !data) return;
+    const panel = panelKind || racePanelKind || "dijkstra";
+    setTimeMode(data.time_of_day || "Morning", true);
+    setUiTheme(data.ui_theme);
+    const nodeById = Object.fromEntries((data.nodes || []).map(function (n) { return [n.id, n]; }));
+    const timeKey = data.time_key || "morning_peak";
+
+    const baseKey = [
+      timeKey,
+      (data.nodes || []).length,
+      (data.roads || []).length,
+      currentThemeName,
+    ].join("|");
+    if (forceReplay || baseKey !== lastRacePanelBaseKey) {
+      lastRacePanelBaseKey = baseKey;
+      setSource("cf-roads", featureCollection((data.roads || []).map(function (r) {
+        const a = nodeById[r.from];
+        const b = nodeById[r.to];
+        if (!a || !b) return null;
+        const flow = Number((r.traffic || {})[timeKey] || 0);
+        const cap = Math.max(1, Number(r.capacity || 1));
+        return line([a, b], {
+          from: r.from,
+          to: r.to,
+          congestion: flow / cap,
+          condition: Number(r.condition || 0)
+        });
+      }).filter(Boolean)));
+      setSource("cf-nodes", pointFeatures((data.nodes || []).filter(function (n) { return n.kind === "neighborhood"; })));
+      setSource("cf-facilities", pointFeatures((data.nodes || []).filter(function (n) { return n.kind === "facility"; })));
+      setSource("cf-areas", areaFeatures(data.nodes || []));
+    }
+
+    // Cheap overlay-key short-circuit. If the race bundle, theme, source
+    // and target are all unchanged, skip the rest of the work; the
+    // animation is already correct on screen.
+    const race = data.race || {};
+    const overlayRoute = panel === "astar" ? (race.astar || {}) : (race.dijkstra || {});
+    const overlayKey = [
+      panel,
+      (overlayRoute.path || []).join("-"),
+      (overlayRoute.explored_nodes || []).join("-"),
+      race.source || "",
+      race.target || "",
+      currentThemeName,
+      data.ui_theme || "",
+    ].join("|");
+    if (!forceReplay && overlayKey === lastRacePanelOverlayKey) {
+      return;
+    }
+    lastRacePanelOverlayKey = overlayKey;
+
+    clearRouteAndScenarioVisuals();
+
+    const route = overlayRoute;
+    const sourceId = race.source || (route && route.path && route.path[0]);
+    const targetId = race.target || (route && route.path && route.path[route.path.length - 1]);
+    setSource("cf-start-end", startEndFeatures({ src: sourceId, dst: targetId, race: true }, nodeById, route && route.path));
+    drawRacePanelRoute(panel, route, nodeById, forceReplay);
+
+    updateVisibility(
+      "race_panel",
+      false,
+      false,
+      false,
+      Boolean(route && route.path && route.path.length > 1)
+    );
+    setLayerVisibility(["cf-start-end", "cf-start-end-halo"], Boolean(sourceId && targetId));
+    applyModeStyling("race_lab", false);
+    applyDisplayState();
+    updateStatus(data);
+    if (route && route.path && route.path.length > 1) {
+      fitRacePanelBounds(route.path, exploredIdsFromResult(route), nodeById);
+    } else if (!cameraSettled && data.nodes && data.nodes.length) {
+      resetCamera();
+    }
+  }
+
+  function clearRouteAndScenarioVisuals() {
+    setSource("cf-route", empty);
+    setSource("cf-route-tracer", empty);
+    setSource("cf-active-route-nodes", empty);
+    setSource("cf-scenario-before", empty);
+    setSource("cf-scenario-after", empty);
+    setSource("cf-affected", empty);
+    setSource("cf-mst", empty);
+    setSource("cf-maintain", empty);
+    setSource("cf-bus", empty);
+    setSource("cf-metro", empty);
+  }
+
+  function drawRacePanelRoute(panel, route, nodeById, forceReplay) {
+    const ids = route && route.path ? route.path : [];
+    const exploredIds = exploredIdsFromResult(route);
+    const nodes = pathToNodes(ids, nodeById);
+    const exploredCoords = exploredIds.map(function (id) { return nodeById[id]; }).filter(Boolean).map(coord);
+    const roads = (latestState && latestState.roads) || [];
+    const exploredEdges = computeExploredEdges(roads, exploredIds, nodeById);
+    const sourceId = panel === "astar" ? "cf-race-astar" : "cf-race-dijkstra";
+    const tracerId = panel === "astar" ? "cf-race-astar-tracer" : "cf-race-dijkstra-tracer";
+    const otherSourceId = panel === "astar" ? "cf-race-dijkstra" : "cf-race-astar";
+    const otherTracerId = panel === "astar" ? "cf-race-dijkstra-tracer" : "cf-race-astar-tracer";
+    if (nodes.length < 2) {
+      setSource(sourceId, empty);
+      setSource(tracerId, empty);
+      setSource(otherSourceId, empty);
+      setSource(otherTracerId, empty);
+      setSource("cf-race-explored", empty);
+      setSource("cf-race-explored-edges", empty);
+      setSource("cf-race-labels", empty);
+      return;
+    }
+    const coords = nodes.map(coord);
+    const key = panel + "|" + ids.join("-") + "|" + exploredIds.join("-") + "|" + currentThemeName;
+    setSource(otherSourceId, empty);
+    setSource(otherTracerId, empty);
+    setSource("cf-race-labels", racePanelLabel(panel, coords));
+    if (!forceReplay && key === lastRaceKey) {
+      setSource("cf-race-explored", raceExploredFeatures(exploredCoords, panel));
+      setSource("cf-race-explored-edges", raceExploredEdgeFeatures(exploredEdges, panel));
+      setSource(sourceId, featureCollection([line(coords, { algorithm: panel === "astar" ? "A*" : "Dijkstra" })]));
+      setSource(tracerId, displayState.tracer ? pointFromCoord(coords[coords.length - 1], { algorithm: panel }) : empty);
+      return;
+    }
+    lastRaceKey = key;
+    if (!displayState.animations) {
+      setSource("cf-race-explored", raceExploredFeatures(exploredCoords, panel));
+      setSource("cf-race-explored-edges", raceExploredEdgeFeatures(exploredEdges, panel));
+      setSource(sourceId, featureCollection([line(coords, { algorithm: panel === "astar" ? "A*" : "Dijkstra" })]));
+      setSource(tracerId, displayState.tracer ? pointFromCoord(coords[coords.length - 1], { algorithm: panel }) : empty);
+      return;
+    }
+    animateRacePanelRoute(coords, exploredCoords, exploredEdges, sourceId, tracerId, panel);
+  }
+
+  function animateRacePanelRoute(coords, exploredCoords, exploredEdges, sourceId, tracerId, panel) {
+    const token = ++raceAnimationToken;
+    const exploreDuration = 3500;
+    const routeDuration = 3500;
+    const duration = exploreDuration + routeDuration;
+    const start = performance.now();
+    const algorithm = panel === "astar" ? "A*" : "Dijkstra";
+    setSource("cf-race-explored", empty);
+    setSource("cf-race-explored-edges", empty);
+    setSource(sourceId, empty);
+    setSource(tracerId, empty);
+
+    // Throttle setData calls: only push a new GeoJSON when the integer
+    // explored-count actually advances, or when the route slice has
+    // moved by a meaningful fraction. This drops ~240 setData calls
+    // per map down to a few dozen, which is what keeps replay smooth.
+    let lastExploredCount = -1;
+    let lastRouteStep = -1;
+    const ROUTE_STEPS = 36; // ~97 ms per visible step over 3.5 s
+
+    function frame(now) {
+      if (token !== raceAnimationToken) return;
+      const t = Math.min(1, (now - start) / duration);
+      const elapsed = now - start;
+      const exploreProgress = Math.min(1, elapsed / exploreDuration);
+      const exploredCount = Math.ceil(exploredCoords.length * (1 - Math.pow(1 - exploreProgress, 2.2)));
+      if (exploredCount !== lastExploredCount) {
+        lastExploredCount = exploredCount;
+        setSource("cf-race-explored", raceExploredFeatures(exploredCoords.slice(0, exploredCount), panel));
+        // Show only edges whose later-visited endpoint has been
+        // revealed by this step. Cheap O(edges) filter.
+        const stepEdges = (exploredEdges || []).filter(function (e) { return e.step < exploredCount; });
+        setSource("cf-race-explored-edges", raceExploredEdgeFeatures(stepEdges, panel));
+      }
+
+      if (elapsed >= exploreDuration) {
+        const routeProgress = Math.min(1, (elapsed - exploreDuration) / routeDuration);
+        const eased = 1 - Math.pow(1 - routeProgress, 2.4);
+        const step = Math.min(ROUTE_STEPS, Math.floor(eased * ROUTE_STEPS));
+        if (step !== lastRouteStep) {
+          lastRouteStep = step;
+          const slice = lineAtProgress(coords, eased);
+          setSource(sourceId, featureCollection([{
+            type: "Feature",
+            properties: { algorithm: algorithm },
+            geometry: { type: "LineString", coordinates: slice.coordinates }
+          }]));
+          setSource(tracerId, displayState.tracer ? pointFromCoord(slice.tracer, { algorithm: algorithm }) : empty);
+        }
+      }
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        setSource("cf-race-explored", raceExploredFeatures(exploredCoords, panel));
+        setSource("cf-race-explored-edges", raceExploredEdgeFeatures(exploredEdges, panel));
+        setSource(sourceId, featureCollection([line(coords, { algorithm: algorithm })]));
+        setSource(tracerId, displayState.tracer ? pointFromCoord(coords[coords.length - 1], { algorithm: algorithm }) : empty);
+      }
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  function exploredIdsFromResult(route) {
+    if (!route) return [];
+    if (Array.isArray(route.explored_nodes) && route.explored_nodes.length) return route.explored_nodes;
+    const frames = Array.isArray(route.frames) ? route.frames : [];
+    for (let i = frames.length - 1; i >= 0; i -= 1) {
+      if (Array.isArray(frames[i].visited) && frames[i].visited.length) return frames[i].visited;
+    }
+    return [];
+  }
+
+  function raceExploredFeatures(coords, panel) {
+    return featureCollection((coords || []).map(function (c, idx) {
+      return pointCoordFeature(c, {
+        algorithm: panel === "astar" ? "A*" : "Dijkstra",
+        role: "explored",
+        order: idx
+      });
+    }));
+  }
+
+  // Reconstruct REAL road-graph edges between visited nodes. This is
+  // honest data — we filter `data.roads` (already in iframe state) to
+  // edges whose endpoints are both in the visited set. Each edge is
+  // tagged with the step at which the LATER of its two endpoints
+  // became visited, so the animation can reveal the search-tree
+  // shape in lockstep with the explored-node reveal. No fakes.
+  function computeExploredEdges(roads, exploredIds, nodeById) {
+    if (!Array.isArray(roads) || !exploredIds || !exploredIds.length) return [];
+    const order = {};
+    exploredIds.forEach(function (id, i) { order[String(id)] = i; });
+    const out = [];
+    roads.forEach(function (r) {
+      const u = String(r.from);
+      const v = String(r.to);
+      const i = order[u];
+      const j = order[v];
+      if (i === undefined || j === undefined) return;
+      const a = nodeById[r.from] || nodeById[u];
+      const b = nodeById[r.to] || nodeById[v];
+      if (!a || !b) return;
+      out.push({
+        step: Math.max(i, j),
+        from: r.from,
+        to: r.to,
+        a: coord(a),
+        b: coord(b)
+      });
+    });
+    out.sort(function (x, y) { return x.step - y.step; });
+    return out;
+  }
+
+  function raceExploredEdgeFeatures(edges, panel) {
+    const algorithm = panel === "astar" ? "A*" : "Dijkstra";
+    return featureCollection((edges || []).map(function (e) {
+      return {
+        type: "Feature",
+        properties: {
+          algorithm: algorithm,
+          role: "explored-edge",
+          from: e.from,
+          to: e.to,
+          step: e.step
+        },
+        geometry: { type: "LineString", coordinates: [e.a, e.b] }
+      };
+    }));
+  }
+
+  function racePanelLabel(panel, coords) {
+    const label = panel === "astar" ? "A* SEARCH" : "DIJKSTRA";
+    const algorithm = panel === "astar" ? "A*" : "Dijkstra";
+    const c = lineAtProgress(coords, 0.58).tracer || coords[0];
+    return featureCollection(c ? [{
+      type: "Feature",
+      properties: { algorithm: algorithm, label: label, sort: 1 },
+      geometry: { type: "Point", coordinates: c }
+    }] : []);
+  }
+
+  function fitPathBounds(path, nodeById) {
+    if (!map || !path || path.length < 2) return;
+    const coords = path.map(function (id) { return nodeById[id]; }).filter(Boolean).map(coord);
+    if (coords.length < 2) return;
+    fitCoordinateBounds(coords);
+  }
+
+  function fitRacePanelBounds(path, exploredIds, nodeById) {
+    if (!map) return;
+    const routeCoords = (path || []).map(function (id) { return nodeById[id]; }).filter(Boolean).map(coord);
+    const exploredCoords = (exploredIds || []).map(function (id) { return nodeById[id]; }).filter(Boolean).map(coord);
+    const coords = routeCoords.concat(exploredCoords);
+    if (coords.length < 2) return;
+    fitCoordinateBounds(coords);
+  }
+
+  function fitCoordinateBounds(coords) {
+    const bounds = coords.reduce(function (b, c) {
+      return b.extend(c);
+    }, new maplibregl.LngLatBounds(coords[0], coords[0]));
+    map.fitBounds(bounds, {
+      padding: { top: 54, bottom: 54, left: 54, right: 54 },
+      maxZoom: 12.6,
+      pitch: (timeThemes[currentThemeName] || timeThemes.Morning).pitch,
+      bearing: (timeThemes[currentThemeName] || timeThemes.Morning).bearing,
+      duration: cameraSettled ? 900 : 1500,
+      essential: true
+    });
+    cameraSettled = true;
   }
 
   function updateRouteVisuals(path, nodeById) {
@@ -1262,14 +1712,14 @@
     if (dLabel) {
       features.push({
         type: "Feature",
-        properties: { algorithm: "Dijkstra", label: "Dijkstra - gold", sort: 1 },
+        properties: { algorithm: "Dijkstra", label: "Dijkstra - cyan", sort: 1 },
         geometry: { type: "Point", coordinates: dLabel }
       });
     }
     if (aLabel) {
       features.push({
         type: "Feature",
-        properties: { algorithm: "A*", label: "A* - cyan", sort: 2 },
+        properties: { algorithm: "A*", label: "A* - gold", sort: 2 },
         geometry: { type: "Point", coordinates: aLabel }
       });
     }
@@ -1302,6 +1752,7 @@
     lastRaceKey = "";
     setSource("cf-race-dijkstra", empty);
     setSource("cf-race-astar", empty);
+    setSource("cf-race-explored", empty);
     setSource("cf-race-dijkstra-tracer", empty);
     setSource("cf-race-astar-tracer", empty);
     setSource("cf-race-labels", empty);
@@ -1319,20 +1770,23 @@
   function updateVisibility(mode, hasRoute, hasScenario, hasMst, hasRace) {
     const inTransit = mode === "transit";
     const inMaintain = mode === "maintain";
-    const trafficRelevant = mode === "route" || mode === "emergency" || hasScenario;
+    const inRace = mode === "race_lab" || mode === "race_panel";
+    const trafficRelevant = mode === "route" || mode === "emergency" || inRace || hasScenario;
     setLayerVisibility(["cf-bus", "cf-metro"], inTransit);
     setLayerVisibility(["cf-maintain"], inMaintain);
     setLayerVisibility(["cf-traffic"], trafficRelevant);
     setLayerVisibility(["cf-mst-line", "cf-mst-glow"], mode === "network" && hasMst);
-    setLayerVisibility([
-      "cf-route-glow", "cf-route-line", "cf-start-end", "cf-start-end-halo",
-      "cf-active-route-nodes", "cf-active-route-nodes-halo", "cf-route-tracer", "cf-node-labels"
-    ], hasRoute);
+    setLayerVisibility(["cf-route-glow", "cf-route-line", "cf-route-tracer"], hasRoute);
+    setLayerVisibility(["cf-start-end", "cf-start-end-halo"], hasRoute || (inRace && hasRace));
+    setLayerVisibility(["cf-active-route-nodes", "cf-active-route-nodes-halo", "cf-node-labels"], hasRoute);
     setLayerVisibility(["cf-scenario-before", "cf-scenario-after", "cf-affected"], hasScenario);
     setLayerVisibility([
-      "cf-race-dijkstra-glow", "cf-race-dijkstra-line", "cf-race-astar-glow", "cf-race-astar-line",
+      "cf-race-dijkstra-glow", "cf-race-dijkstra-casing", "cf-race-dijkstra-line",
+      "cf-race-astar-glow", "cf-race-astar-casing", "cf-race-astar-line",
+      "cf-race-explored-glow", "cf-race-explored-dot",
+      "cf-race-explored-edges-casing", "cf-race-explored-edges-line",
       "cf-race-dijkstra-tracer", "cf-race-astar-tracer", "cf-race-labels"
-    ], mode === "route" && hasRace);
+    ], inRace && hasRace);
   }
 
   function applyModeStyling(mode, hasScenario) {
@@ -1353,14 +1807,16 @@
     setPaint("cf-route-glow", "line-opacity", isEmergency ? 0.34 : theme.routeGlow);
     setPaint("cf-route-tracer", "circle-stroke-color", routeColor);
     setPaint("cf-roads-base", "line-opacity",
-      mode === "route" || mode === "emergency" ? Math.max(0.09, theme.roadOpacity * 0.72) : theme.roadOpacity);
+      mode === "route" || mode === "emergency" || mode === "race_lab" ? Math.max(0.09, theme.roadOpacity * 0.72) : theme.roadOpacity);
   }
 
   function updateStatus(data) {
     const mode = String(data.active_mode || "route");
     const clock = data.clock || "06:00";
     const tod = data.time_of_day || "Morning";
-    const route = data.route && data.route.travel_time_min
+    const route = data.active_mode === "race_lab" && data.race
+      ? "race overlay ready"
+      : data.route && data.route.travel_time_min
       ? "ETA " + Number(data.route.travel_time_min).toFixed(1) + " min"
       : "network live";
     const scenario = data.scenario ? " - " + data.scenario.label : "";
@@ -1374,7 +1830,7 @@
     if (!card) return;
     const route = data.route;
     const scenario = data.scenario;
-    const race = data.active_mode === "route" ? data.race : null;
+    const race = data.active_mode === "race_lab" ? data.race : null;
     const emergency = data.active_mode === "emergency" ? data.emergency : null;
     if (scenario) {
       const before = scenario.before_min == null ? "unreachable" : Number(scenario.before_min).toFixed(1) + " min";
@@ -1392,7 +1848,7 @@
       const a = race.astar;
       setPrimaryCard(
         (race.winner || "Race") + " Wins - Dijkstra vs A*",
-        "Gold Dijkstra: " + formatRaceMetric(d) + " / Cyan A*: " + formatRaceMetric(a),
+        "Cyan Dijkstra: " + formatRaceMetric(d) + " / Gold A*: " + formatRaceMetric(a),
         "Node speedup " + (race.speedup_pct_nodes == null ? "n/a" : Number(race.speedup_pct_nodes).toFixed(1) + "%"),
         "race"
       );
@@ -1706,9 +2162,10 @@
     const out = [];
     const src = route && route.src ? route.src : path && path[0];
     const dst = route && route.dst ? route.dst : path && path[path.length - 1];
+    const race = Boolean(route && route.race);
     if (!src || !dst) return empty;
-    if (nodeById[src]) out.push(point(nodeById[src], { role: "start" }));
-    if (nodeById[dst]) out.push(point(nodeById[dst], { role: "end" }));
+    if (nodeById[src]) out.push(point(nodeById[src], { role: "start", race: race }));
+    if (nodeById[dst]) out.push(point(nodeById[dst], { role: "end", race: race }));
     return featureCollection(out);
   }
 
@@ -1801,11 +2258,15 @@
 
   function pointFromCoord(c, props) {
     if (!c || c.length < 2) return empty;
-    return featureCollection([{
+    return featureCollection([pointCoordFeature(c, props)]);
+  }
+
+  function pointCoordFeature(c, props) {
+    return {
       type: "Feature",
       properties: props || {},
       geometry: { type: "Point", coordinates: [Number(c[0]), Number(c[1])] }
-    }]);
+    };
   }
 
   function tracerFeature(n) {
@@ -1878,7 +2339,18 @@
     const msg = event && event.data;
     if (!msg || msg.type !== "cairoflow-map-state") return;
     setUiTheme(msg.data && msg.data.ui_theme);
+    if (racePanelKind) {
+      updateRacePanelMap(msg.data, racePanelKind);
+      return;
+    }
     updateMap(msg.data);
+  });
+
+  window.addEventListener("message", function (event) {
+    const msg = event && event.data;
+    if (!msg || msg.type !== "cairoflow-race-panel-state") return;
+    setUiTheme(msg.data && msg.data.ui_theme);
+    updateRacePanelMap(msg.data, msg.panel || racePanelKind);
   });
 
   window.addEventListener("message", function (event) {
@@ -1894,6 +2366,14 @@
     const nodeById = Object.fromEntries((latestState.nodes || []).map(function (n) { return [n.id, n]; }));
     updateRaceVisual(msg.race || (latestState && latestState.race), nodeById, true);
     applyDisplayState();
+  });
+
+  window.addEventListener("message", function (event) {
+    const msg = event && event.data;
+    if (!msg || msg.type !== "cairoflow-race-panel-replay") return;
+    const data = msg.data || latestState;
+    if (!data) return;
+    updateRacePanelMap(data, msg.panel || racePanelKind, true);
   });
 
   window.addEventListener("message", function (event) {
