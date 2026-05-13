@@ -7,6 +7,7 @@ from dash import dcc, html
 
 from src.algorithms.trace import AlgorithmTrace
 from src.ui.components import (
+    algorithm_context,
     cf_button,
     cf_icon,
     empty_state,
@@ -22,7 +23,17 @@ from src.ui.components import (
 def render_maintain_panel() -> list:
     return [
         info_card(
-            title="Budget",
+            title="Road Maintenance Planning",
+            body=algorithm_context(
+                "Road Maintenance Planning",
+                "0/1 Knapsack Dynamic Programming",
+                "Selects the best set of road repairs under a fixed maintenance budget.",
+                prefix="DP",
+                icon="lucide:wrench",
+            ),
+        ),
+        info_card(
+            title="Maintenance Budget Constraint",
             body=html.Div(
                 [
                     dcc.Slider(
@@ -101,14 +112,21 @@ def render_maintain_summary_card(
         title=html.Span([
             cf_icon("lucide:wrench", size=16, color="var(--accent-warm)",
                     style={"marginRight": "6px"}),
-            "Repair plan",
+            "Road Maintenance Planning",
         ]),
         body=html.Div([
+            algorithm_context(
+                "DP Optimal Selection",
+                "0/1 Knapsack Dynamic Programming",
+                "Selects the repair set with the highest maintenance benefit score within the budget.",
+                prefix="DP",
+                icon="lucide:wrench",
+            ),
             _stat_row("Selected roads",
                       f"{selected_count} / {n_poor_total} poor",
                       accent=True, icon="lucide:check"),
             _stat_row("Total cost", cost_str, icon="lucide:wallet"),
-            _stat_row("Total value score", f"{total_value:.2f}",
+            _stat_row("Maintenance Benefit Score", f"{total_value:.2f}",
                       icon="lucide:trending-up"),
             _stat_row("Population served", f"{population_served:,}",
                       icon="lucide:users"),
@@ -120,7 +138,7 @@ def render_maintain_list_card(selected_roads: list[dict],
                               names: dict[str, str]) -> html.Div:
     if not selected_roads:
         return info_card(
-            title="Selected roads",
+            title="Selected Road Repairs",
             body=html.Div(
                 "No roads selected at this budget.",
                 className="cf-placeholder",
@@ -143,7 +161,19 @@ def render_maintain_list_card(selected_roads: list[dict],
                 className="cf-stat-row",
             )
         )
-    return info_card(title="Per-road detail", body=html.Div(rows))
+    return info_card(
+        title="Selected Road Repairs",
+        body=html.Div([
+            algorithm_context(
+                "Selected Road Repairs",
+                "0/1 Knapsack Dynamic Programming",
+                "Lists the roads chosen by the DP optimizer under the current budget.",
+                prefix="DP",
+                icon="lucide:wrench",
+            ),
+            *rows,
+        ]),
+    )
 
 
 def render_maintain_programmer_slot(trace: AlgorithmTrace, programmer_on: bool):

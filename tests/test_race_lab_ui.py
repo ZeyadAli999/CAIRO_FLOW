@@ -77,6 +77,30 @@ def _bundle(*, d_frames=8, a_frames=5, agree=True, paths=True):
             "path_changed": paths,
             "reachable": paths,
         },
+        "panels": {
+            "dijkstra": {
+                "title": "DIJKSTRA",
+                "subtitle": "Shortest Distance Objective",
+                "path": d_path,
+                "cost_label": "22.10 km" if paths else "unreachable",
+                "distance_km": 22.1 if paths else None,
+                "traffic_time_min": 39.2 if paths else None,
+                "distance_label": "22.10 km" if paths else "unreachable",
+                "traffic_time_label": "39.20 min" if paths else "unreachable",
+                "unit": "km",
+            },
+            "astar": {
+                "title": "A* SEARCH",
+                "subtitle": "Traffic-Aware Heuristic Route",
+                "path": a_path,
+                "cost_label": "31.40 min" if paths else "unreachable",
+                "distance_km": 24.7 if paths else None,
+                "traffic_time_min": 31.4 if paths else None,
+                "distance_label": "24.70 km" if paths else "unreachable",
+                "traffic_time_label": "31.40 min" if paths else "unreachable",
+                "unit": "minutes",
+            },
+        },
         "map_overlay": {
             "dijkstra_path": d_path,
             "astar_path": a_path,
@@ -131,38 +155,41 @@ def test_render_race_card_contains_lab_copy_and_preserved_ids():
     ids = {_component_id(node) for node in _walk(card)}
 
     assert "Dijkstra vs A* Race Lab" in text
-    assert "Dijkstra vs A* — Same Cost Objective" in text
-    assert "Both algorithms optimize the same edge objective" in text
-    assert "same optimal cost is expected" in text
+    assert "Objective Cost View" in text
+    assert "kilometers are compared only with kilometers" in text
+    assert "minutes only with minutes" in text
     assert "DIJKSTRA" in text
     assert "A* SEARCH" in text
     assert "Shortest Distance Objective" in text
     assert "Traffic-Aware Heuristic Route" in text
     assert "Dijkstra Insight" in text
     assert "A* Insight" in text
-    assert "Winner / Best Choice" in text
+    assert "Shortest Distance Winner" in text
+    assert "Fastest Traffic-Time Winner" in text
+    assert "Search Efficiency Winner" in text
     assert "Dijkstra: Uniform Cost Expansion" in text
     assert "A*: Heuristic-Guided Search" in text
-    assert "Distance Cost vs Traffic-Time Cost" in text
-    assert "Distance uses kilometers" in text
-    assert "BPR travel time in minutes" in text
+    assert "Distance and Traffic-Time Metrics" in text
+    assert "distance in kilometers" in text
+    assert "traffic-time in minutes" in text
     assert "Shortest-Distance Route" in text
     assert "Traffic-Aware Fastest Route" in text
     assert "Distance km" in text
-    assert "Travel time minutes" in text
+    assert "Traffic time" in text
     assert "Why these costs differ" in text
     assert "Suggested demo route for clearer cost/path difference" in text
-    assert "Same final route. Different search effort." in text
+    assert "Both algorithms selected the same route." in text
     assert "A* explored 3 fewer nodes" in text
     assert "Explored node" in text
     assert "admissible heuristic" in text
-    assert "Optimal cost" in text
     assert "Explored nodes" in text
     assert "Runtime" in text
     assert "Replay race" in text
     assert "22.10 km" in text
-    assert "31.40 minutes" in text
-    assert "separate objective scores" in text
+    assert "24.70 km" in text
+    assert "31.40 min" in text
+    assert "Both routes are evaluated using the same metrics" in text
+    assert "Cost mismatch" not in text
     assert {
         "race-replay",
         "race-canvas-dijkstra",
@@ -213,6 +240,7 @@ def test_config_exposes_race_lab_mode_after_transit():
         "Maintain",
         "Transit",
         "Race Lab",
+        "Signals",
     ]
 
 
@@ -240,6 +268,7 @@ def test_race_lab_sidebar_has_independent_controls():
     assert "race-to" in ids
     assert "race-cost-view" in ids
     assert "race-tod" in ids
+    assert "race-scenario" in ids
     assert "race-run" in ids
 
 
@@ -265,6 +294,7 @@ def test_race_run_callback_uses_race_lab_controls_and_map_payload():
     assert bundle["source"] == "1"
     assert bundle["target"] == "F1"
     assert bundle["cost_view"] == "objective"
+    assert bundle["scenario"]["label"] == "Normal Traffic"
     assert bundle["map_overlay"]["dijkstra_path"] == bundle["dijkstra"]["path"]
     assert bundle["map_overlay"]["astar_path"] == bundle["astar"]["path"]
     assert bundle["dijkstra"]["explored_nodes"]
@@ -276,6 +306,10 @@ def test_race_run_callback_uses_race_lab_controls_and_map_payload():
     assert bundle["map_overlay"]["astar_color"] == "gold"
     assert bundle["panels"]["dijkstra"]["unit"] == "km"
     assert bundle["panels"]["astar"]["unit"] == "minutes"
+    assert bundle["panels"]["dijkstra"]["distance_label"].endswith(" km")
+    assert bundle["panels"]["dijkstra"]["traffic_time_label"].endswith(" min")
+    assert bundle["panels"]["astar"]["distance_label"].endswith(" km")
+    assert bundle["panels"]["astar"]["traffic_time_label"].endswith(" min")
 
 
 def test_main_workspace_renders_two_real_map_panels_when_race_lab_is_active():
@@ -358,8 +392,36 @@ def test_map_state_payload_uses_race_lab_time_context():
 def test_existing_modes_still_render():
     from src.ui.sidebar import placeholder_for
 
-    for mode in ("network", "route", "emergency", "maintain", "transit", "race_lab"):
+    for mode in ("network", "route", "emergency", "maintain", "transit", "race_lab", "signals"):
         assert placeholder_for(mode)
+
+
+def test_major_mode_panels_surface_feature_and_algorithm_labels():
+    from src.ui.emergency_mode import render_emergency_panel
+    from src.ui.maintain_mode import render_maintain_panel
+    from src.ui.network_mode import render_network_panel
+    from src.ui.route_mode import render_route_panel
+    from src.ui.transit_mode import render_transit_panel
+
+    panels = (
+        render_route_panel(),
+        render_network_panel(),
+        render_emergency_panel(),
+        render_maintain_panel(),
+        render_transit_panel(),
+    )
+    text = " ".join(_text(item) for panel in panels for item in panel)
+
+    assert "Route Planning" in text
+    assert "Dijkstra, A*, Time-Dependent Dijkstra + BPR" in text
+    assert "Infrastructure Network Design" in text
+    assert "Kruskal MST / Prim MST" in text
+    assert "Emergency Dispatch" in text
+    assert "A* Emergency Routing" in text
+    assert "Road Maintenance Planning" in text
+    assert "0/1 Knapsack Dynamic Programming" in text
+    assert "Public Transit Optimization" in text
+    assert "Dynamic Programming + Multimodal Shortest Path" in text
 
 
 def test_route_mode_no_longer_contains_main_race_lab_button():
@@ -370,6 +432,34 @@ def test_route_mode_no_longer_contains_main_race_lab_button():
 
     assert not any(_component_id(node) == "route-race" for node in components)
     assert any(_component_id(node) == "route-ml" for node in components)
+    assert any(_component_id(node) == "route-scenario" for node in components)
+
+
+def test_route_mode_scenario_comparison_card_renders_for_incident():
+    import app
+
+    result = app._compute_route(
+        1,
+        "time_aware",
+        "1",
+        "F1",
+        [],
+        [],
+        "Morning",
+        "incident_shortest_route",
+    )
+    side_slot = result[5]
+    text = _text(side_slot)
+
+    assert "Traffic Scenario Comparison" in text
+    assert "Time-Dependent Dijkstra + In-Memory Scenario Simulation" in text
+    assert "Incident on Shortest Route" in text
+    assert "Scenario is applied in memory only." in text
+    assert "Shortest-distance route" in text
+    assert "Traffic-aware route" in text
+    assert "Shortest Distance Winner" in text
+    assert "Fastest Traffic-Time Winner" in text
+    assert "Distance is compared with distance; traffic-time is compared with traffic-time." in text
 
 
 def test_race_lab_scrollable_cards_and_no_visible_canvas_styles():
@@ -404,7 +494,7 @@ def test_race_lab_difference_callout_and_winner_are_visually_strong():
     bundle["cost_view"] = "algorithm"
     text = _text(render_race_card(bundle))
 
-    assert "Same final route. Different search effort." in text
+    assert "Both algorithms selected the same route." in text
     assert "A* explored 4 fewer nodes" in text
     assert "A* is more search-efficient because it explored 4 fewer nodes" in text
     assert "Explored node" in text

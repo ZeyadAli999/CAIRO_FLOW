@@ -14,11 +14,16 @@ from src.db.queries import (
     node_lookup,
 )
 from src.ui.components import (
+    algorithm_context,
     cf_button,
     cf_icon,
     empty_state,
     info_card,
     programmer_panel,
+)
+from src.scenarios.traffic_scenarios import (
+    SCENARIO_NORMAL,
+    scenario_options,
 )
 
 
@@ -122,9 +127,14 @@ def render_route_panel(
             ),
         ),
         info_card(
-            title="Algorithm",
+            title="Route Planning",
             body=html.Div(
                 [
+                    algorithm_context(
+                        "Route Planning",
+                        "Dijkstra, A*, Time-Dependent Dijkstra + BPR",
+                        "Finds weighted graph routes, focuses search with a heuristic, and evaluates congestion-adjusted travel time.",
+                    ),
                     render_route_algo_pills(active_algo),
                     dcc.Checklist(
                         id="route-options",
@@ -138,6 +148,28 @@ def render_route_panel(
                     ),
                 ]
             ),
+        ),
+        info_card(
+            title="Traffic Scenario",
+            body=html.Div(
+                [
+                    algorithm_context(
+                        "Traffic Scenario Comparison",
+                        "Time-Dependent Dijkstra + In-Memory Scenario Simulation",
+                        "Evaluates shortest-distance and traffic-aware routes under temporary congestion without modifying raw data.",
+                        prefix="Model",
+                        icon="lucide:activity",
+                    ),
+                    dcc.RadioItems(
+                        id="route-scenario",
+                        options=scenario_options(),
+                        value=SCENARIO_NORMAL,
+                        className="cf-checklist",
+                        labelStyle={"display": "block", "marginTop": "6px"},
+                    ),
+                ]
+            ),
+            footer="Scenario is applied in memory only.",
         ),
         info_card(
             title="Avoid these roads",
@@ -160,7 +192,7 @@ def render_route_panel(
                 html.Button(
                     [cf_icon("lucide:brain", size=14,
                              style={"marginRight": "6px"}, color="currentColor"),
-                     html.Span("ML forecast")],
+                     html.Span("ML Traffic Forecast")],
                     id="route-ml",
                     className="cf-btn",
                     n_clicks=0,
@@ -228,7 +260,20 @@ def render_route_result_card(
         u, v = worst_seg
         cong_str += f"  ({names.get(u, u)} → {names.get(v, v)})"
     via_str = _format_path(via_path, names)
+    if "Time-Aware" in weight_mode or "BPR" in weight_mode:
+        algo_name = "Time-Dependent Dijkstra + BPR"
+    elif "A*" in weight_mode:
+        algo_name = "A* Heuristic Search"
+    elif "Dijkstra" in weight_mode:
+        algo_name = "Dijkstra Shortest Path"
+    else:
+        algo_name = weight_mode
     children = [
+        algorithm_context(
+            "Route Planning Result",
+            algo_name,
+            "Shows the selected transportation route with distance, travel time, congestion, and path sequence.",
+        ),
         _stat_row("Distance", f"{distance_km:.1f} km", icon="lucide:ruler"),
         _stat_row("Travel time", f"{travel_min:.1f} min",
                   accent=True, icon="lucide:clock"),
@@ -248,12 +293,93 @@ def render_route_result_card(
     return info_card(title="Route Result", body=html.Div(children))
 
 
+def render_route_scenario_card(comparison: dict | None, names: dict[str, str]) -> html.Div | None:
+    if not comparison:
+        return None
+    scenario = comparison["scenario"]
+    if scenario["id"] == SCENARIO_NORMAL:
+        return None
+
+    shortest = comparison["shortest_distance_route"]
+    traffic = comparison["traffic_aware_route"]
+
+    def path_text(path):
+        return _format_path(path or [], names) if path else "unreachable"
+
+    rows = [
+        html.Div(
+            [
+                html.Div("Shortest-distance route", className="cf-route-compare-title"),
+                _stat_row("Path", path_text(shortest.get("path")), icon="lucide:route"),
+                _stat_row("Distance", shortest["distance_label"], icon="lucide:ruler"),
+                _stat_row("Traffic time", shortest["traffic_time_label"],
+                          accent=True, icon="lucide:clock"),
+            ],
+            className="cf-route-compare-col",
+        ),
+        html.Div(
+            [
+                html.Div("Traffic-aware route", className="cf-route-compare-title"),
+                _stat_row("Path", path_text(traffic.get("path")), icon="lucide:route"),
+                _stat_row("Distance", traffic["distance_label"], icon="lucide:ruler"),
+                _stat_row("Traffic time", traffic["traffic_time_label"],
+                          accent=True, icon="lucide:clock"),
+            ],
+            className="cf-route-compare-col",
+        ),
+    ]
+    insight = (
+        comparison.get("no_alternative_note")
+        or "Shortest route is not always the fastest under congestion."
+    )
+    return info_card(
+        title="Traffic Scenario Comparison",
+        body=html.Div(
+            [
+                algorithm_context(
+                    "Traffic Scenario Comparison",
+                    "Time-Dependent Dijkstra + In-Memory Scenario Simulation",
+                    "Evaluates shortest-distance and traffic-aware routes under temporary congestion without modifying raw data.",
+                    prefix="Model",
+                    icon="lucide:activity",
+                ),
+                html.Div(
+                    [
+                        html.Span(scenario["label"], className="cf-route-scenario-name"),
+                        html.Span("Scenario is applied in memory only.",
+                                  className="cf-route-scenario-note"),
+                    ],
+                    className="cf-route-scenario-head",
+                ),
+                html.Div(scenario["description"], className="cf-route-scenario-copy"),
+                html.Div(rows, className="cf-route-compare-grid"),
+                _stat_row(
+                    "Shortest Distance Winner",
+                    comparison["distance_winner"]["text"],
+                    icon="lucide:ruler",
+                ),
+                _stat_row(
+                    "Fastest Traffic-Time Winner",
+                    comparison["traffic_time_winner"]["text"],
+                    accent=True,
+                    icon="lucide:clock",
+                ),
+                html.Div(insight, className="cf-comparison-strip"),
+                html.Div(
+                    "Distance is compared with distance; traffic-time is compared with traffic-time.",
+                    className="cf-route-scenario-copy",
+                ),
+            ]
+        ),
+    )
+
+
 def render_alternatives_card(
     routes: list[dict], names: dict[str, str]
 ) -> html.Div:
     if not routes:
         return info_card(
-            title="Alternative routes",
+            title="K-Alternative Routes",
             body=html.Div("No alternative routes found.", className="cf-placeholder"),
         )
     labels = ["Fastest", "Shortest", "Cleanest"]
@@ -293,7 +419,14 @@ def render_alternatives_card(
             )
         )
     return html.Div(
-        [html.Div("Alternative routes", className="cf-section-title")] + cards
+        [
+            html.Div("Alternative Routes", className="cf-section-title"),
+            algorithm_context(
+                "Backup Route Planning",
+                "K-Alternative Routes",
+                "Compares backup paths when roads are avoided or congestion changes the preferred route.",
+            ),
+        ] + cards
     )
 
 

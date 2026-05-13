@@ -12,7 +12,12 @@ from typing import Any
 from dash import dcc, html
 
 from src.config import TIMES_OF_DAY
-from src.ui.components import cf_icon, info_card
+from src.scenarios.traffic_scenarios import (
+    SCENARIO_NORMAL,
+    evaluate_route_comparison,
+    scenario_options,
+)
+from src.ui.components import algorithm_context, cf_icon, info_card
 
 
 def _stat(label: str, value: Any, accent: bool = False) -> html.Div:
@@ -55,7 +60,15 @@ def render_race_panel() -> list:
     return [
         info_card(
             title="Race Lab",
-            body="Choose source and target, then run the Dijkstra vs A* Race Lab.",
+            body=html.Div([
+                algorithm_context(
+                    "Dijkstra vs A* Race Lab",
+                    "Dijkstra Uniform Cost Search + A* Heuristic-Guided Search",
+                    "Compares final route metrics and search effort side by side.",
+                    icon="lucide:swords",
+                ),
+                "Choose source and target, then run the Dijkstra vs A* Race Lab.",
+            ]),
         ),
         info_card(
             title="From",
@@ -101,6 +114,28 @@ def render_race_panel() -> list:
             ),
             footer="Used when the objective is Traffic-aware / BPR.",
         ),
+        info_card(
+            title="Comparison Scenario",
+            body=html.Div(
+                [
+                    algorithm_context(
+                        "Scenario Model",
+                        "In-Memory Traffic Simulation",
+                        "Shows how congestion can make the shortest route slower than a traffic-aware route.",
+                        prefix="Model",
+                        icon="lucide:activity",
+                    ),
+                    dcc.RadioItems(
+                        id="race-scenario",
+                        options=scenario_options(),
+                        value=SCENARIO_NORMAL,
+                        className="cf-checklist",
+                        labelStyle={"display": "block", "marginTop": "6px"},
+                    ),
+                ]
+            ),
+            footer="Scenario is applied in memory only.",
+        ),
         html.Button(
             [
                 cf_icon("lucide:swords", size=14,
@@ -128,38 +163,7 @@ def cost_objective_comparison(G, source: Any, target: Any, time_of_day: str) -> 
     Race Lab can show why equal Dijkstra/A* cost is correct while
     traffic-aware routing may legitimately report a different score.
     """
-    from src.algorithms.shortest_path import (
-        dijkstra,
-        dijkstra_time_dependent,
-        path_distance_km,
-        path_travel_time_hours,
-    )
-
-    distance_path, distance_cost, _ = dijkstra(G, source, target, weight="distance_km")
-    traffic_path, traffic_hours, _ = dijkstra_time_dependent(G, source, target, time_of_day)
-
-    distance_reachable = distance_path is not None
-    traffic_reachable = traffic_path is not None
-    return {
-        "source": source,
-        "target": target,
-        "time_of_day": time_of_day,
-        "distance_path": distance_path,
-        "traffic_path": traffic_path,
-        "distance_cost_km": round(distance_cost, 2) if distance_reachable else None,
-        "traffic_cost_min": round(traffic_hours * 60.0, 2) if traffic_reachable else None,
-        "distance_path_travel_min": (
-            round(path_travel_time_hours(G, distance_path, time_of_day) * 60.0, 2)
-            if distance_reachable else None
-        ),
-        "traffic_path_distance_km": (
-            round(path_distance_km(G, traffic_path), 2) if traffic_reachable else None
-        ),
-        "path_changed": (
-            bool(distance_reachable and traffic_reachable and distance_path != traffic_path)
-        ),
-        "reachable": bool(distance_reachable and traffic_reachable),
-    }
+    return evaluate_route_comparison(G, source, target, time_of_day, SCENARIO_NORMAL)
 
 
 def race_summary(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -212,12 +216,15 @@ def race_summary(bundle: dict[str, Any]) -> dict[str, Any]:
                 f"{a_runtime:.2f} ms vs Dijkstra {d_runtime:.2f} ms."
             )
     else:
-        status = "Cost mismatch"
+        status = "Multi-metric route comparison"
         optimality = (
-            "The algorithms did not agree on cost for this bundle; inspect the "
-            "graph view, weight mode, and heuristic assumptions."
+            "Distance and traffic-time are evaluated as separate route metrics, "
+            "so kilometers are never compared directly with minutes."
         )
-        efficiency = "Efficiency comparison is secondary until cost agreement is restored."
+        efficiency = (
+            "Use the distance winner, traffic-time winner, and search-efficiency "
+            "winner to compare like with like."
+        )
 
     heuristic = (
         "A* uses h(n) = straight-line distance to the target. Because this "
@@ -255,6 +262,7 @@ def render_race_card(bundle: dict[str, Any]) -> html.Div:
     summary = race_summary(bundle)
     objective = bundle.get("objective_comparison")
     panels = _panel_models(bundle)
+    cost_view = bundle.get("cost_view", "algorithm")
 
     return html.Div(
         [
@@ -274,11 +282,23 @@ def render_race_card(bundle: dict[str, Any]) -> html.Div:
                                 className="cf-race-title",
                             ),
                             html.P(
-                                "Same-objective race: both algorithms optimize "
-                                "the same edge cost. Same cost is expected and "
-                                "confirms optimality; the real comparison is "
-                                "explored nodes and runtime.",
+                                (
+                                    "Algorithm Cost View: both algorithms optimize "
+                                    "the same edge cost. If the route is the same, "
+                                    "the main difference is search efficiency."
+                                    if cost_view == "algorithm"
+                                    else "Objective Cost View: both routes show "
+                                    "distance and traffic-time, so kilometers are "
+                                    "compared only with kilometers and minutes only "
+                                    "with minutes."
+                                ),
                                 className="cf-race-subtitle",
+                            ),
+                            algorithm_context(
+                                "Dijkstra vs A* Race Lab",
+                                "Dijkstra Uniform Cost Search + A* Heuristic-Guided Search",
+                                "Dijkstra expands by lowest known route cost; A* uses a straight-line heuristic to reduce explored nodes.",
+                                icon="lucide:swords",
                             ),
                         ],
                         className="cf-race-heading",
@@ -288,6 +308,10 @@ def render_race_card(bundle: dict[str, Any]) -> html.Div:
                             _meta_chip("Source", bundle["source"]),
                             _meta_chip("Target", bundle["target"]),
                             _meta_chip("Weight", bundle["weight_mode"]),
+                            _meta_chip(
+                                "Scenario",
+                                bundle.get("scenario", {}).get("label", "Normal Traffic"),
+                            ),
                             _meta_chip("Result", summary["status"]),
                         ],
                         className="cf-race-meta-grid",
@@ -325,8 +349,23 @@ def render_race_card(bundle: dict[str, Any]) -> html.Div:
             ),
             _legacy_canvas_mount(),
             _section_title(
-                "Dijkstra vs A* — Same Cost Objective",
-                "Both algorithms optimize the same edge objective, so the same optimal cost is expected. A* is judged by efficiency: fewer explored nodes and runtime, not a lower cost.",
+                (
+                    "Algorithm Cost View"
+                    if cost_view == "algorithm"
+                    else "Objective Cost View"
+                ),
+                (
+                    "Both algorithms selected the same route. The main difference is search efficiency."
+                    if cost_view == "algorithm"
+                    else "Both routes are evaluated using the same metrics. Distance is compared with distance, and traffic-time is compared with traffic-time."
+                ),
+            ),
+            algorithm_context(
+                "Scenario Model",
+                "In-Memory Traffic Simulation",
+                "Scenario mode applies temporary congestion to the copied graph so displayed route differences stay scientific.",
+                prefix="Model",
+                icon="lucide:activity",
             ),
             html.Div(
                 [
@@ -348,9 +387,8 @@ def render_race_sidebar_note(bundle: dict[str, Any]) -> html.Div:
             html.Div("Race Lab active.", className="cf-race-side-title"),
             html.Div(
                 (
-                    "Dijkstra and A* use the same objective here, so matching "
-                    "cost is correct. Use the main Race Lab view for the distance-vs-traffic "
-                    "cost comparison."
+                    "Race Lab evaluates both routes with distance in km, "
+                    "traffic-time in minutes, and explored-node counts."
                 ),
                 className="cf-race-side-copy",
             ),
@@ -406,11 +444,14 @@ def _difference_callout(bundle: dict[str, Any], summary: dict[str, Any]) -> html
         and bundle.get("dijkstra", {}).get("path") == bundle.get("astar", {}).get("path")
     )
     title = (
-        "Same final route. Different search effort."
-        if same_route else "Different final route. Different search effort."
+        "Both algorithms selected the same route."
+        if same_route else "Different final route. Compare each metric separately."
     )
     if node_savings > 0:
-        body = f"A* explored {node_savings} fewer nodes than Dijkstra ({pct:.1f}% less search)."
+        body = (
+            f"The main difference is search efficiency: A* explored {node_savings} "
+            f"fewer nodes than Dijkstra ({pct:.1f}% less search)."
+        )
     elif node_savings == 0:
         body = (
             "Both algorithms explored a similar number of nodes on this route. "
@@ -470,6 +511,34 @@ def _panel_models(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
     cost_view = bundle.get("cost_view", "algorithm")
     d_hops = _path_hops(d)
     a_hops = _path_hops(a)
+    objective = bundle.get("objective_comparison") or {}
+
+    def _panel_metric(kind: str, key: str, fallback: Any = None) -> Any:
+        panel = panels.get(kind, {})
+        if key in panel:
+            return panel.get(key)
+        return fallback
+
+    d_distance = _panel_metric(
+        "dijkstra",
+        "distance_km",
+        objective.get("distance_cost_km") if cost_view == "objective" else d.get("cost"),
+    )
+    d_time = _panel_metric(
+        "dijkstra",
+        "traffic_time_min",
+        objective.get("distance_path_travel_min"),
+    )
+    a_distance = _panel_metric(
+        "astar",
+        "distance_km",
+        objective.get("traffic_path_distance_km") if cost_view == "objective" else a.get("cost"),
+    )
+    a_time = _panel_metric(
+        "astar",
+        "traffic_time_min",
+        objective.get("traffic_cost_min"),
+    )
 
     return {
         "dijkstra": {
@@ -479,6 +548,10 @@ def _panel_models(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "algorithm_label": "Dijkstra: Uniform Cost Expansion",
             "subtitle": panels.get("dijkstra", {}).get("subtitle", "Shortest Distance Objective"),
             "cost": panels.get("dijkstra", {}).get("cost_label", _fmt_cost(d.get("cost"))),
+            "distance": _fmt_km(d_distance),
+            "distance_value": d_distance,
+            "traffic_time": _fmt_minutes(d_time),
+            "traffic_time_value": d_time,
             "path": panels.get("dijkstra", {}).get("path", d.get("path")),
             "explored": d.get("n_frames", 0),
             "edges": d.get("edges_relaxed", 0),
@@ -495,6 +568,10 @@ def _panel_models(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "algorithm_label": "A*: Heuristic-Guided Search",
             "subtitle": panels.get("astar", {}).get("subtitle", "Traffic-Aware Heuristic Route"),
             "cost": panels.get("astar", {}).get("cost_label", _fmt_cost(a.get("cost"))),
+            "distance": _fmt_km(a_distance),
+            "distance_value": a_distance,
+            "traffic_time": _fmt_minutes(a_time),
+            "traffic_time_value": a_time,
             "path": panels.get("astar", {}).get("path", a.get("path")),
             "explored": a.get("n_frames", 0),
             "edges": a.get("edges_relaxed", 0),
@@ -509,6 +586,11 @@ def _panel_models(bundle: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def _map_algorithm_panel(panel: dict[str, Any]) -> html.Div:
+    explanation = (
+        "Expands nodes by the lowest known route cost until the target is reached."
+        if panel["kind"] == "dijkstra"
+        else "Uses a straight-line heuristic to focus search toward the destination."
+    )
     return html.Div(
         [
             html.Div(
@@ -523,17 +605,38 @@ def _map_algorithm_panel(panel: dict[str, Any]) -> html.Div:
                     ),
                     html.Div(
                         [
-                            html.Span("Cost", className="cf-race-cost-label"),
-                            html.Strong(panel["cost"], className="cf-race-cost-value"),
+                            html.Div(
+                                [
+                                    html.Span("Distance", className="cf-race-cost-label"),
+                                    html.Strong(panel["distance"], className="cf-race-cost-value"),
+                                ],
+                                className="cf-race-cost-chip",
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("Traffic time", className="cf-race-cost-label"),
+                                    html.Strong(panel["traffic_time"], className="cf-race-cost-value"),
+                                ],
+                                className="cf-race-cost-chip",
+                            ),
                         ],
-                        className="cf-race-cost-chip",
+                        className="cf-race-cost-stack",
                     ),
                 ],
                 className="cf-race-map-head",
             ),
+            algorithm_context(
+                panel["subtitle"],
+                panel["algorithm_label"],
+                explanation,
+                prefix="Algorithm",
+                icon="lucide:cpu",
+            ),
             html.Div(
                 [
                     _metric("Path", _fmt_path(panel["path"]), "lucide:route", accent=True),
+                    _metric("Distance", panel["distance"], "lucide:ruler", accent=True),
+                    _metric("Traffic time", panel["traffic_time"], "lucide:clock", accent=True),
                     _metric("Explored nodes", str(panel["explored"]), "lucide:circle-dot"),
                     _metric("Edges relaxed", str(panel["edges"]), "lucide:git-branch"),
                     _metric("Runtime", f"{float(panel['runtime']):.2f} ms", "lucide:timer"),
@@ -566,35 +669,56 @@ def _comparison_insight_cards(
 ) -> html.Div:
     d = panels["dijkstra"]
     a = panels["astar"]
-    cost_view = bundle.get("cost_view", "algorithm")
     node_savings = int(summary.get("node_savings") or 0)
 
-    if cost_view == "objective":
-        winner = (
-            "Best for shortest distance: Dijkstra, because its score is measured in kilometers. "
-            "Best for traffic-aware travel time: A* / traffic-aware route, because its score is "
-            "measured in BPR minutes. These are different objective scores, so the raw numbers "
-            "are not compared as the same unit."
+    def _winner_by_metric(
+        label: str,
+        d_value: Any,
+        a_value: Any,
+        unit: str,
+        tie_text: str,
+    ) -> str:
+        if d_value is None or a_value is None:
+            return f"{label}: winner unavailable because one route is unreachable."
+        d_num = float(d_value)
+        a_num = float(a_value)
+        if abs(d_num - a_num) < 1e-9:
+            return tie_text
+        winner = "Dijkstra" if d_num < a_num else "A*"
+        return (
+            f"{label}: {winner} wins with "
+            f"{min(d_num, a_num):.2f} {unit} "
+            f"vs {max(d_num, a_num):.2f} {unit}."
         )
-    elif node_savings > 0 and summary.get("agree_on_cost"):
-        winner = (
+
+    distance_winner = _winner_by_metric(
+        "Shortest Distance Winner",
+        d.get("distance_value"),
+        a.get("distance_value"),
+        "km",
+        "Both routes have the same distance.",
+    )
+    traffic_winner = _winner_by_metric(
+        "Fastest Traffic-Time Winner",
+        d.get("traffic_time_value"),
+        a.get("traffic_time_value"),
+        "min",
+        "Both routes have the same estimated traffic time.",
+    )
+
+    if node_savings > 0:
+        efficiency_winner = (
             f"A* is more search-efficient because it explored {node_savings} fewer nodes while "
-            "preserving the same optimal cost. Dijkstra remains the pure uniform-cost baseline."
+            "preserving the selected route objective."
         )
-    elif node_savings < 0 and summary.get("agree_on_cost"):
-        winner = (
-            f"Dijkstra explored {abs(node_savings)} fewer nodes on this selected run while both "
-            "algorithms preserved the same optimal cost."
-        )
-    elif summary.get("agree_on_cost"):
-        winner = (
-            "Both algorithms preserved the same optimal cost and explored the same number of nodes. "
-            "For this run the best choice is a tie on search effort."
+    elif node_savings < 0:
+        efficiency_winner = (
+            f"Dijkstra is more search-efficient on this run because it explored "
+            f"{abs(node_savings)} fewer nodes."
         )
     else:
-        winner = (
-            "The selected cost view uses different objective scores. Use the objective labels and "
-            "units to decide what is better for the question being asked."
+        efficiency_winner = (
+            "Both algorithms explored the same number of nodes."
         )
 
     return html.Div(
@@ -602,7 +726,8 @@ def _comparison_insight_cards(
             _insight_card(
                 "Dijkstra Insight",
                 (
-                    f"Dijkstra used {d['subtitle']} with cost {d['cost']}. It explored "
+                    f"Dijkstra used {d['subtitle']}. Distance: {d['distance']}; "
+                    f"traffic time: {d['traffic_time']}. It explored "
                     f"{d['explored']} nodes and relaxed {d['edges']} edges because uniform-cost "
                     "search expands broadly from the source before committing to the target."
                 ),
@@ -612,7 +737,8 @@ def _comparison_insight_cards(
             _insight_card(
                 "A* Insight",
                 (
-                    f"A* used {a['subtitle']} with cost {a['cost']}. It explored "
+                    f"A* used {a['subtitle']}. Distance: {a['distance']}; "
+                    f"traffic time: {a['traffic_time']}. It explored "
                     f"{a['explored']} nodes and relaxed {a['edges']} edges. Its admissible "
                     "heuristic uses straight-line distance to point the search toward the target, often "
                     "reducing exploration."
@@ -621,17 +747,28 @@ def _comparison_insight_cards(
                 accent=True,
             ),
             _insight_card(
-                "Winner / Best Choice",
-                winner,
-                icon="lucide:trophy",
+                "Shortest Distance Winner",
+                distance_winner,
+                icon="lucide:ruler",
                 accent=True,
             ),
             _insight_card(
-                "Objective Explanation",
+                "Fastest Traffic-Time Winner",
+                traffic_winner,
+                icon="lucide:clock",
+                accent=True,
+            ),
+            _insight_card(
+                "Search Efficiency Winner",
+                efficiency_winner,
+                icon="lucide:zap",
+                accent=True,
+            ),
+            _insight_card(
+                "Same Metrics Comparison",
                 (
-                    "Algorithm Cost View compares search behavior under a shared objective. "
-                    "Objective Cost View intentionally separates kilometers from BPR minutes so "
-                    "the professor can see a real cost-objective difference without fake costs."
+                    "Both routes are evaluated using the same metrics. Distance is compared "
+                    "with distance, and traffic-time is compared with traffic-time."
                 ),
                 icon="lucide:split",
                 accent=False,
@@ -733,13 +870,14 @@ def _objective_section(objective: dict[str, Any] | None) -> html.Div:
         )
 
     path_changed = "Changed" if objective.get("path_changed") else "Same path"
+    scenario = objective.get("scenario") or {"id": SCENARIO_NORMAL, "label": "Normal Traffic"}
     distance_cost = objective.get("distance_cost_km")
     traffic_cost = objective.get("traffic_cost_min")
     distance_cost_text = (
         "unreachable" if distance_cost is None else f"{distance_cost:.2f} km"
     )
     traffic_cost_text = (
-        "unreachable" if traffic_cost is None else f"{traffic_cost:.2f} minutes"
+        "unreachable" if traffic_cost is None else f"{traffic_cost:.2f} min"
     )
     if objective.get("path_changed"):
         path_note = (
@@ -755,8 +893,24 @@ def _objective_section(objective: dict[str, Any] | None) -> html.Div:
     return html.Div(
         [
             _section_title(
-                "Distance Cost vs Traffic-Time Cost",
-                "This is an objective comparison, not a Dijkstra vs A* race. Distance uses kilometers; traffic-aware routing uses BPR travel time in minutes.",
+                "Distance and Traffic-Time Metrics",
+                "Both routes are evaluated using distance in kilometers and traffic-time in minutes.",
+            ),
+            html.Div(
+                [
+                    html.Span(scenario.get("label", "Normal Traffic"),
+                              className="cf-race-side-title"),
+                    html.Div(
+                        (
+                            "Scenario is applied in memory only. "
+                            + str(scenario.get("description", ""))
+                            if scenario.get("id") != SCENARIO_NORMAL
+                            else "Normal Traffic uses the existing graph and traffic data."
+                        ),
+                        className="cf-race-side-copy",
+                    ),
+                ],
+                className="cf-race-side-note",
             ),
             html.Div(
                 [
@@ -769,7 +923,7 @@ def _objective_section(objective: dict[str, Any] | None) -> html.Div:
                             _metric("Distance km", distance_cost_text,
                                     "lucide:ruler"),
                             _metric(
-                                "Travel time minutes",
+                                "Traffic time",
                                 _fmt_minutes(objective.get("distance_path_travel_min")),
                                 "lucide:clock",
                             ),
@@ -788,7 +942,7 @@ def _objective_section(objective: dict[str, Any] | None) -> html.Div:
                                 _fmt_km(objective.get("traffic_path_distance_km")),
                                 "lucide:ruler",
                             ),
-                            _metric("Travel time minutes", traffic_cost_text,
+                            _metric("Traffic time", traffic_cost_text,
                                     "lucide:clock"),
                             _metric("Path", _fmt_path(objective.get("traffic_path")),
                                     "lucide:route"),
@@ -801,16 +955,15 @@ def _objective_section(objective: dict[str, Any] | None) -> html.Div:
                 [
                     _insight_card(
                         "Why these costs differ",
-                        "These costs differ because the objectives differ: shortest "
-                        "distance in kilometers vs fastest traffic-aware travel time "
-                        "in minutes. The values are separate objective scores, not "
-                        "the same unit.",
+                        "The objectives can choose different routes, but the display "
+                        "stays fair: distance is compared with distance, and traffic-time "
+                        "is compared with traffic-time.",
                         icon="lucide:split",
                         accent=True,
                     ),
                     _insight_card(
                         "Path comparison",
-                        f"{path_changed}. {path_note}",
+                        f"{path_changed}. {objective.get('no_alternative_note') or path_note}",
                         icon="lucide:git-compare",
                         accent=bool(objective.get("path_changed")),
                     ),
@@ -879,7 +1032,7 @@ def _objective_card(title: str, subtitle: str, metrics: list[html.Div]) -> html.
 def _fmt_minutes(value: Any) -> str:
     if value is None:
         return "unreachable"
-    return f"{float(value):.2f} minutes"
+    return f"{float(value):.2f} min"
 
 
 def _fmt_km(value: Any) -> str:
@@ -890,7 +1043,7 @@ def _fmt_km(value: Any) -> str:
 
 def _insight_card(title: str, body: str, icon: str, accent: bool = False) -> html.Div:
     class_name = "cf-race-insight" + (" is-accent" if accent else "")
-    if title == "Winner / Best Choice":
+    if "Winner" in title:
         class_name += " is-winner"
     return html.Div(
         [
@@ -924,6 +1077,13 @@ def render_ml_forecast_card(metrics: dict, top_features: list[tuple[str, float]]
             "ML traffic predictor (scikit-learn)",
         ]),
         body=html.Div([
+            algorithm_context(
+                "ML Traffic Forecast",
+                "RandomForestRegressor",
+                "Predicts traffic flow to support route planning and congestion discussion.",
+                prefix="Model",
+                icon="lucide:brain",
+            ),
             _stat("Model", metrics.get("model", "-")),
             _stat("Samples", str(metrics.get("n_samples", "-"))),
             _stat("Train / Test", f"{metrics.get('n_train','-')} / {metrics.get('n_test','-')}"),

@@ -4,7 +4,7 @@ from __future__ import annotations
 from dash import dcc, html
 
 from src.config import DEFAULT_MODE, DEFAULT_TIME_OF_DAY, TIMES_OF_DAY
-from src.ui.components import cf_icon
+from src.ui.components import algorithm_context, cf_icon
 from src.ui.map_view import render_map
 from src.ui.sidebar import render_sidebar
 
@@ -211,6 +211,13 @@ def _what_if_panel() -> html.Div:
                 ],
                 className="cf-scenario-grid",
             ),
+            algorithm_context(
+                "Scenario Simulation Framework",
+                "Graph Simulation + Algorithm Benchmarking",
+                "Runs peak traffic, road closure, emergency, transit, maintenance, and signal scenarios on copied graph states.",
+                prefix="Model",
+                icon="lucide:activity",
+            ),
             html.Div(
                 "Pick a scenario to recalculate the current route with temporary, non-destructive road conditions.",
                 id="what-if-result",
@@ -282,6 +289,9 @@ def render_layout() -> html.Div:
             dcc.Store(id="transit-tab", data="bus"),
             dcc.Store(id="transit-result", data=None),
             dcc.Store(id="transit-trace", data=None),
+            # Signals mode state.
+            dcc.Store(id="signals-result", data=None),
+            dcc.Store(id="signals-trace", data=None),
             # Pulse-effect targets — written only by clientside callbacks.
             dcc.Store(id="mst-pulse-effect", data=None),
             dcc.Store(id="route-pulse-effect", data=None),

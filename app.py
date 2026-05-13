@@ -84,6 +84,13 @@ from src.ui.route_mode import (
     render_alternatives_card,
     render_route_algo_pills,
     render_route_result_card,
+    render_route_scenario_card,
+)
+from src.ui.signals_mode import (
+    AUTO_INTERSECTION,
+    render_emergency_preemption_card,
+    render_signal_result_card,
+    render_signals_programmer_slot,
 )
 from src.ui.sidebar import placeholder_for, render_pills
 from src.ui.transit_mode import (
@@ -93,6 +100,13 @@ from src.ui.transit_mode import (
     render_mm_result_card,
     render_transfers_card,
     render_transit_tabs,
+)
+from src.scenarios.traffic_scenarios import (
+    SCENARIO_NORMAL,
+    apply_traffic_scenario,
+    evaluate_route_comparison,
+    route_metrics,
+    scenario_label,
 )
 
 
@@ -386,11 +400,14 @@ def _map_state_payload(
     maintain_data,
     transit_data,
     scenario_data,
+    signals_data=None,
 ) -> dict:
     payload = _base_map_payload()
     effective_tod = tod_label or TIMES_OF_DAY[0]
     if active_mode == "race_lab" and race_data and race_data.get("time_context"):
         effective_tod = race_data.get("time_context")
+    if active_mode == "signals" and signals_data and signals_data.get("time_of_day"):
+        effective_tod = signals_data.get("time_of_day")
     payload.update({
         "active_mode": active_mode or DEFAULT_MODE,
         "time_of_day": effective_tod,
@@ -403,9 +420,101 @@ def _map_state_payload(
         "maintain": maintain_data,
         "transit": transit_data,
         "scenario": scenario_data,
+        "signals": signals_data,
         "scenario_catalog": _scenario_catalog(),
     })
     return payload
+
+
+def _signal_overlay_payload(graph, report, selected, allocation, tod_key, names, allocator, min_green, max_green) -> dict:
+    """Build a display-only MapLibre payload for Greedy signal audit results."""
+    node_meta = node_lookup()
+    selected_id = str(selected)
+    optimal_nodes = {str(case.get("intersection")) for case in report.get("optimal_cases") or []}
+    suboptimal_nodes = {str(case.get("intersection")) for case in report.get("suboptimal_cases") or []}
+
+    def coord(node_id: str) -> list[float] | None:
+        item = node_meta.get(str(node_id))
+        if not item:
+            return None
+        return [float(item["x"]), float(item["y"])]
+
+    def status_for(node_id: str) -> str:
+        if node_id == selected_id:
+            return "selected"
+        if node_id in suboptimal_nodes:
+            return "suboptimal"
+        if node_id in optimal_nodes:
+            return "optimal"
+        return "watch"
+
+    points = []
+    audited = sorted(
+        [node for node in graph.nodes() if graph.degree(node) >= 3],
+        key=lambda item: (0, f"{int(str(item)):04d}") if str(item).isdigit() else (1, str(item)),
+    )
+    for node in audited:
+        node_id = str(node)
+        xy = coord(node_id)
+        if not xy:
+            continue
+        try:
+            node_allocation = allocation if node_id == selected_id else allocator(node, graph, tod_key)
+            allocs = node_allocation.get("allocations") or {}
+        except Exception:
+            allocs = {}
+        demand = sum(
+            int(((graph[node][nb].get("traffic") or {}).get(tod_key, 0)) or 0)
+            for nb in graph.neighbors(node)
+        )
+        points.append({
+            "id": node_id,
+            "name": names.get(node_id, node_id),
+            "status": status_for(node_id),
+            "green_seconds": int(max(allocs.values())) if allocs else None,
+            "demand": int(demand),
+            "lon": xy[0],
+            "lat": xy[1],
+        })
+
+    selected_xy = coord(selected_id)
+    approaches = []
+    if selected_id in graph and selected_xy:
+        allocs = allocation.get("allocations") or {}
+        for neighbor in graph.neighbors(selected_id):
+            neighbor_id = str(neighbor)
+            neighbor_xy = coord(neighbor_id)
+            if not neighbor_xy:
+                continue
+            green = int(allocs.get(neighbor, allocs.get(neighbor_id, 0)) or 0)
+            demand = int(((graph[selected_id][neighbor].get("traffic") or {}).get(tod_key, 0)) or 0)
+            status = "watch" if green <= min_green + 4 or green >= max_green - 3 else "optimal"
+            if green <= min_green + 1 and demand > 0:
+                status = "suboptimal"
+            approaches.append({
+                "from": selected_id,
+                "to": neighbor_id,
+                "from_name": names.get(selected_id, selected_id),
+                "to_name": names.get(neighbor_id, neighbor_id),
+                "green_seconds": green,
+                "demand": demand,
+                "status": status,
+                "coordinates": [selected_xy, neighbor_xy],
+            })
+
+    return {
+        "mode": "signals",
+        "selected_intersection": selected_id,
+        "legend": [
+            {"label": "Optimal signal", "status": "optimal"},
+            {"label": "Watch / near limit", "status": "watch"},
+            {"label": "Suboptimal", "status": "suboptimal"},
+            {"label": "Selected intersection", "status": "selected"},
+            {"label": "Connected approach", "status": "approach"},
+        ],
+        "points": points,
+        "approaches": approaches,
+    }
 
 
 # --- Bootstrap data ---------------------------------------------------------
@@ -592,6 +701,19 @@ def _update_time_of_day(idx):
     if idx is None:
         return TIMES_OF_DAY[0]
     return TIMES_OF_DAY[int(idx)]
+
+
+@app.callback(
+    Output("time-of-day", "data", allow_duplicate=True),
+    Output("time-of-day-slider", "value", allow_duplicate=True),
+    Input("signals-tod", "value"),
+    State("active-mode", "data"),
+    prevent_initial_call=True,
+)
+def _sync_signals_time_of_day(tod_label, active_mode):
+    if active_mode != "signals" or tod_label not in TIMES_OF_DAY:
+        return no_update, no_update
+    return tod_label, TIMES_OF_DAY.index(tod_label)
 
 
 # ---------------------------------------------------------------------------
@@ -811,9 +933,10 @@ def _switch_route_algo(_clicks, current):
     State("route-options", "value"),
     State("route-avoid",   "value"),
     State("time-of-day",   "data"),
+    State("route-scenario", "value"),
     prevent_initial_call=True,
 )
-def _compute_route(_n, algo, src, dst, options, avoid, tod_label):
+def _compute_route(_n, algo, src, dst, options, avoid, tod_label, scenario_id):
     if not _n:
         return [], [], [], [], empty_state(), None, None, None
     options = options or []
@@ -833,6 +956,11 @@ def _compute_route(_n, algo, src, dst, options, avoid, tod_label):
             if H.has_edge(u, v):
                 H.remove_edge(u, v)
         G = H
+
+    scenario_id = scenario_id or SCENARIO_NORMAL
+    scenario_application = apply_traffic_scenario(G, scenario_id, src, dst, tod)
+    scenario_comparison = evaluate_route_comparison(G, src, dst, tod, scenario_id)
+    G = scenario_application["graph"]
 
     if algo == "dijkstra":
         path, cost, trace = dijkstra(G, src, dst, weight="distance_km")
@@ -899,9 +1027,13 @@ def _compute_route(_n, algo, src, dst, options, avoid, tod_label):
         night_min=night_min,
         weight_mode=mode_label,
     )
+    scenario_card = render_route_scenario_card(scenario_comparison, names)
+    side_cards = [card for card in (scenario_card, alts_card) if card is not None]
+    side_slot = html.Div(side_cards) if side_cards else None
     summary = {
         "algo": algo,
         "src": src, "dst": dst, "tod": tod,
+        "scenario": scenario_id,
         "distance_km": round(distance_km, 2),
         "travel_time_min": round(travel_min, 2),
         "max_congestion": round(max_cong, 3),
@@ -910,7 +1042,7 @@ def _compute_route(_n, algo, src, dst, options, avoid, tod_label):
     }
     return (
         edges, glow, markers, alts_layer,
-        result_card, alts_card, summary, asdict(trace),
+        result_card, side_slot, summary, asdict(trace),
     )
 
 
@@ -938,6 +1070,11 @@ def _explored_nodes_from_frames(result: dict) -> list:
     return []
 
 
+def _race_route_metrics(G, path, time_of_day: str) -> dict:
+    """Display-only metrics for a Race Lab route path."""
+    return route_metrics(G, path, time_of_day)
+
+
 @app.callback(
     Output("race-run-status", "children"),
     Output("race-data",       "data"),
@@ -946,9 +1083,10 @@ def _explored_nodes_from_frames(result: dict) -> list:
     State("race-to",   "value"),
     State("race-cost-view", "value"),
     State("race-tod", "value"),
+    State("race-scenario", "value"),
     prevent_initial_call=True,
 )
-def _run_race_lab(_n, src, dst, cost_view, tod_label):
+def _run_race_lab(_n, src, dst, cost_view, tod_label, scenario_id=SCENARIO_NORMAL):
     if not _n or not src or not dst:
         return no_update, no_update
     from src.algorithms.race import astar_with_steps, dijkstra_with_steps, race
@@ -956,9 +1094,12 @@ def _run_race_lab(_n, src, dst, cost_view, tod_label):
         cost_objective_comparison,
         render_race_sidebar_note,
     )
-    G = build_graph()
+    base_graph = build_graph()
     tod_key = _tod_key(tod_label)
     cost_view = cost_view or "algorithm"
+    scenario_id = scenario_id or SCENARIO_NORMAL
+    scenario_application = apply_traffic_scenario(base_graph, scenario_id, src, dst, tod_key)
+    G = scenario_application["graph"]
 
     if cost_view == "objective":
         d_res = dijkstra_with_steps(G, src, dst, weight="distance_km")
@@ -996,8 +1137,17 @@ def _run_race_lab(_n, src, dst, cost_view, tod_label):
 
     d_data["explored_nodes"] = _explored_nodes_from_frames(d_data)
     a_data["explored_nodes"] = _explored_nodes_from_frames(a_data)
-    bundle["objective_comparison"] = cost_objective_comparison(G, src, dst, tod_key)
+    d_metrics = _race_route_metrics(G, d_data.get("path"), tod_key)
+    a_metrics = _race_route_metrics(G, a_data.get("path"), tod_key)
+    bundle["objective_comparison"] = evaluate_route_comparison(
+        base_graph, src, dst, tod_key, scenario_id
+    )
     bundle["cost_view"] = cost_view
+    bundle["scenario"] = {
+        key: value
+        for key, value in scenario_application.items()
+        if key != "graph"
+    }
     bundle["time_context"] = tod_label or TIMES_OF_DAY[0]
     bundle["panels"] = {
         "dijkstra": {
@@ -1005,6 +1155,7 @@ def _run_race_lab(_n, src, dst, cost_view, tod_label):
             "subtitle": d_subtitle,
             "path": d_data.get("path"),
             "cost_label": d_cost_label,
+            **d_metrics,
             "unit": "km",
         },
         "astar": {
@@ -1012,6 +1163,7 @@ def _run_race_lab(_n, src, dst, cost_view, tod_label):
             "subtitle": a_subtitle,
             "path": a_data.get("path"),
             "cost_label": a_cost_label,
+            **a_metrics,
             "unit": "minutes" if cost_view == "objective" else "km",
         },
     }
@@ -1573,6 +1725,110 @@ def _render_transit_programmer_panel(programmer_on, trace_data):
 
 
 # ---------------------------------------------------------------------------
+# Signals mode - Greedy signal timing
+# ---------------------------------------------------------------------------
+
+@app.callback(
+    Output("signals-result-slot", "children"),
+    Output("signals-preemption-slot", "children"),
+    Output("signals-result", "data"),
+    Output("signals-trace", "data"),
+    Input("signals-run", "n_clicks"),
+    State("signals-tod", "value"),
+    State("signals-intersection", "value"),
+    prevent_initial_call=True,
+)
+def _run_signals_mode(_n, tod_label, selected_intersection):
+    if not _n:
+        return no_update, no_update, no_update, no_update
+    from src.algorithms.greedy import (
+        MAX_GREEN_S,
+        MIN_GREEN_S,
+        emergency_preemption_priority,
+        signal_audit_report,
+        traffic_signal_allocation,
+    )
+
+    G = build_graph()
+    tod_key = _tod_key(tod_label)
+    report = signal_audit_report(G, tod_key)
+    intersections = [node for node in G.nodes() if G.degree(node) >= 3]
+    if not intersections:
+        return (
+            html.Div("No signalized intersections found in the graph.", className="cf-placeholder"),
+            None,
+            None,
+            asdict(report["trace"]),
+        )
+
+    selected = selected_intersection
+    if not selected or selected == AUTO_INTERSECTION or selected not in G:
+        priority_cases = (report.get("suboptimal_cases") or report.get("optimal_cases") or [])
+        selected = str(priority_cases[0]["intersection"]) if priority_cases else str(intersections[0])
+
+    allocation = traffic_signal_allocation(selected, G, tod_key)
+    names = node_name_lookup()
+    flows = {
+        str(nb): int(((G[selected][nb].get("traffic") or {}).get(tod_key, 0)) or 0)
+        for nb in G.neighbors(selected)
+    }
+    preemption_schedule = emergency_preemption_priority(
+        [
+            {"id": "AMB-01", "priority": 1, "path": ["11", "F2", "3", "5", "F1"]},
+            {"id": "FIRE-02", "priority": 2, "path": ["1", "3", "2", "4"]},
+        ],
+        intersections,
+        G,
+    )
+    result_card = render_signal_result_card(
+        report=report,
+        allocation=allocation,
+        selected_intersection=str(selected),
+        time_label=tod_label or TIMES_OF_DAY[0],
+        names=names,
+        flows=flows,
+    )
+    preemption_card = render_emergency_preemption_card(preemption_schedule, names)
+    trace = allocation["trace"]
+    overlay = _signal_overlay_payload(
+        G,
+        report,
+        str(selected),
+        allocation,
+        tod_key,
+        names,
+        traffic_signal_allocation,
+        MIN_GREEN_S,
+        MAX_GREEN_S,
+    )
+    result_data = {
+        "time_of_day": tod_label or TIMES_OF_DAY[0],
+        "time_key": tod_key,
+        "selected_intersection": str(selected),
+        "intersections_audited": report.get("intersections_audited"),
+        "optimal_count": len(report.get("optimal_cases") or []),
+        "suboptimal_count": len(report.get("suboptimal_cases") or []),
+        "gini_overall": report.get("gini_overall"),
+        "allocations": {str(k): int(v) for k, v in allocation.get("allocations", {}).items()},
+        "flows": flows,
+        "preemption": preemption_schedule[:4],
+        "overlay": overlay,
+    }
+    return result_card, preemption_card, result_data, asdict(trace)
+
+
+@app.callback(
+    Output("signals-prog-slot", "children"),
+    Input("programmer-mode", "data"),
+    Input("signals-trace", "data"),
+)
+def _render_signals_programmer_panel(programmer_on, trace_data):
+    if not programmer_on or not trace_data:
+        return None
+    return render_signals_programmer_slot(AlgorithmTrace(**trace_data), True)
+
+
+# ---------------------------------------------------------------------------
 # Clientside success-pulse callbacks. Each fires when its mode's result
 # store updates; the JS helper toggles the success-pulse class on the
 # matching button so the keyframe replays.
@@ -1735,9 +1991,10 @@ def _run_what_if(_clicks, _reset_clicks, route_data, tod_label):
     Input("what-if-scenario", "data"),
     Input("mst-result", "data"),
     Input("race-data", "data"),
+    Input("signals-result", "data"),
 )
 def _sync_map_state(active_mode, tod_label, route_data, em_data,
-                    maintain_data, transit_data, scenario_data, mst_data, race_data):
+                    maintain_data, transit_data, scenario_data, mst_data, race_data, signals_data):
     return _map_state_payload(
         active_mode,
         tod_label,
@@ -1748,6 +2005,7 @@ def _sync_map_state(active_mode, tod_label, route_data, em_data,
         maintain_data,
         transit_data,
         scenario_data,
+        signals_data,
     )
 
 

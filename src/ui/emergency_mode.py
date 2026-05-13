@@ -7,6 +7,7 @@ from dash import dcc, html
 
 from src.algorithms.trace import AlgorithmTrace
 from src.ui.components import (
+    algorithm_context,
     cf_button,
     cf_icon,
     empty_state,
@@ -18,6 +19,15 @@ from src.ui.route_mode import node_options
 
 def render_emergency_panel() -> list:
     return [
+        info_card(
+            title="Emergency Dispatch",
+            body=algorithm_context(
+                "Emergency Dispatch",
+                "A* Emergency Routing",
+                "Selects an emergency facility and routes to it using heuristic-guided traffic-aware search.",
+                icon="lucide:siren",
+            ),
+        ),
         info_card(
             title="Incident location",
             body=dcc.Dropdown(
@@ -119,9 +129,15 @@ def render_emergency_result_card(
         title=html.Span([
             cf_icon("lucide:siren", size=16, color="var(--danger)",
                     style={"marginRight": "6px"}),
-            "Dispatch result",
+            "Emergency Dispatch",
         ]),
         body=html.Div([
+            algorithm_context(
+                "Selected Emergency Facility",
+                "A* Emergency Routing",
+                "Finds the fastest reachable emergency facility using heuristic-guided traffic-aware search.",
+                icon="lucide:siren",
+            ),
             _stat_row("Nearest facility",
                       f"{facility_name or facility_id} ({facility_id})",
                       accent=True, icon="lucide:hospital"),
@@ -147,8 +163,13 @@ def render_emergency_performance_card(
     else:
         speedup = 0.0
     return info_card(
-        title="A* vs Dijkstra",
+        title="Emergency Search Efficiency",
         body=html.Div([
+            algorithm_context(
+                "Emergency Route Explanation",
+                "A* Search vs Dijkstra",
+                "Compares heuristic-guided search with uniform-cost expansion for the same emergency route.",
+            ),
             _stat_row("A* explored", f"{astar_nodes} nodes",
                       icon="lucide:circle-dot"),
             _stat_row("Dijkstra would explore", f"{dijkstra_nodes} nodes",
@@ -175,8 +196,15 @@ def render_emergency_traffic_card(
     saved = naive_min - aware_min
     pct = (saved / naive_min * 100.0) if naive_min > 0 else 0.0
     return info_card(
-        title="Traffic-awareness impact",
+        title="Traffic-Aware Response Time",
         body=html.Div([
+            algorithm_context(
+                "Traffic-Aware Response Time",
+                "Time-Dependent Dijkstra + BPR",
+                "Evaluates the emergency route with congestion-adjusted travel time.",
+                prefix="Model",
+                icon="lucide:activity",
+            ),
             _stat_row("Naive routing ETA", f"{naive_min:.1f} min",
                       icon="lucide:clock"),
             _stat_row("Traffic-aware ETA", f"{aware_min:.1f} min",

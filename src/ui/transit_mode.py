@@ -7,6 +7,7 @@ from dash import dcc, html
 
 from src.algorithms.trace import AlgorithmTrace
 from src.ui.components import (
+    algorithm_context,
     cf_button,
     cf_icon,
     empty_state,
@@ -50,6 +51,16 @@ def render_transit_tabs(active: str = "bus") -> html.Div:
 def _bus_tab_body() -> html.Div:
     return html.Div([
         info_card(
+            title="Bus Fleet Allocation",
+            body=algorithm_context(
+                "Bus Fleet Allocation",
+                "Bus Fleet Allocation DP",
+                "Distributes buses to maximize demand benefit under a limited fleet.",
+                prefix="DP",
+                icon="lucide:bus",
+            ),
+        ),
+        info_card(
             title="Total buses available",
             body=html.Div([
                 dcc.Slider(id="transit-bus-total", min=50, max=250,
@@ -73,6 +84,16 @@ def _bus_tab_body() -> html.Div:
 def _metro_tab_body() -> html.Div:
     return html.Div([
         info_card(
+            title="Metro Train-Hour Allocation",
+            body=algorithm_context(
+                "Metro Train-Hour Allocation",
+                "Metro Train-Hour Allocation DP",
+                "Assigns train-hours across metro lines under limited operating capacity.",
+                prefix="DP",
+                icon="lucide:train-front",
+            ),
+        ),
+        info_card(
             title="Train-hours per day",
             body=html.Div([
                 dcc.Slider(id="transit-metro-total", min=50, max=500,
@@ -94,6 +115,15 @@ def _metro_tab_body() -> html.Div:
 
 def _multimodal_tab_body() -> html.Div:
     return html.Div([
+        info_card(
+            title="Multimodal Shortest Path",
+            body=algorithm_context(
+                "Multimodal Route Planning",
+                "Multimodal Shortest Path",
+                "Combines road, bus, metro, and transfer penalties into one route search.",
+                icon="lucide:navigation",
+            ),
+        ),
         info_card(
             title="From",
             body=dcc.Dropdown(id="transit-mm-from",
@@ -122,6 +152,12 @@ def _transfers_tab_body() -> html.Div:
         info_card(
             title="Transfer hub analysis",
             body=html.Div([
+                algorithm_context(
+                    "Transfer Hub Ranking",
+                    "Transfer Hub Ranking",
+                    "Identifies high-demand interchange points from multimodal demand paths.",
+                    icon="lucide:replace",
+                ),
                 "Multimodal Dijkstra is run for every transit-demand pair "
                 "in the dataset. Hubs are ranked by usage × demand.",
             ], style={"fontSize": "12px",
@@ -154,6 +190,16 @@ def _tab_body_for(tab: str) -> Any:
 
 def render_transit_panel(active_tab: str = "bus") -> list:
     return [
+        info_card(
+            title="Public Transit Optimization",
+            body=algorithm_context(
+                "Public Transit Optimization",
+                "Dynamic Programming + Multimodal Shortest Path",
+                "Optimizes bus fleets, metro train-hours, multimodal routing, and transfer hubs.",
+                prefix="Algorithms",
+                icon="lucide:train-front",
+            ),
+        ),
         render_transit_tabs(active_tab),
         html.Div(_tab_body_for(active_tab), id="transit-tab-body"),
         html.Div(id="transit-prog-slot"),
@@ -199,9 +245,16 @@ def render_bus_result_card(allocations: dict, current: dict,
         title=html.Span([
             cf_icon("lucide:bus", size=16, color="var(--accent)",
                     style={"marginRight": "6px"}),
-            "Optimized bus allocation",
+            "Bus Fleet Allocation",
         ]),
         body=html.Div([
+            algorithm_context(
+                "Bus Fleet Allocation",
+                "Bus Fleet Allocation DP",
+                "Distributes buses to maximize demand benefit under a limited fleet.",
+                prefix="DP",
+                icon="lucide:bus",
+            ),
             _stat_row("Total buses", str(total), accent=True,
                       icon="lucide:hash"),
             _stat_row("DP benefit", f"{total_benefit:,.0f} pax/day",
@@ -217,9 +270,16 @@ def render_metro_result_card(allocations: dict, total_benefit: float,
         title=html.Span([
             cf_icon("lucide:train-front", size=16, color="var(--accent)",
                     style={"marginRight": "6px"}),
-            "Optimized metro hours",
+            "Metro Train-Hour Allocation",
         ]),
         body=html.Div([
+            algorithm_context(
+                "Metro Train-Hour Allocation",
+                "Metro Train-Hour Allocation DP",
+                "Assigns train-hours across metro lines under limited operating capacity.",
+                prefix="DP",
+                icon="lucide:train-front",
+            ),
             _stat_row("Total train-hours", str(total), accent=True,
                       icon="lucide:hash"),
             _stat_row("DP benefit", f"{total_benefit:,.0f} pax-mins",
@@ -276,9 +336,15 @@ def render_mm_result_card(*, total_min: float, road_only_min: float | None,
         title=html.Span([
             cf_icon("lucide:navigation", size=16, color="var(--accent)",
                     style={"marginRight": "6px"}),
-            "Multimodal route",
+            "Multimodal Route Planning",
         ]),
         body=html.Div([
+            algorithm_context(
+                "Multimodal Route Planning",
+                "Multimodal Shortest Path",
+                "Combines road, bus, metro, and transfer penalties into one route search.",
+                icon="lucide:navigation",
+            ),
             _stat_row("Total time", f"{total_min:.1f} min",
                       accent=True, icon="lucide:clock"),
             *legs,
@@ -298,15 +364,23 @@ def render_transfers_card(ranking: list[dict]) -> html.Div:
         title=html.Span([
             cf_icon("lucide:replace", size=16, color="var(--accent)",
                     style={"marginRight": "6px"}),
-            "Top transfer hubs",
+            "Transfer Hub Ranking",
         ]),
         body=html.Div([
+            algorithm_context(
+                "Transfer Hub Ranking",
+                "Multimodal Demand Ranking",
+                "Ranks interchange nodes by transfer use and passenger demand.",
+                icon="lucide:replace",
+            ),
+            *[
             _stat_row(
                 f"{r['name']} ({r['node_id']})",
                 f"{r['transfer_count']} transfers · {r['weighted_demand']:,.0f} pax",
                 icon="lucide:replace",
             )
             for r in ranking[:5]
+            ],
         ]),
     )
 

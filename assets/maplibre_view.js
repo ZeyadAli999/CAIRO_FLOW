@@ -204,7 +204,9 @@
       "cf-race-explored-edges": {},
       "cf-race-dijkstra-tracer": {},
       "cf-race-astar-tracer": {},
-      "cf-race-labels": {}
+      "cf-race-labels": {},
+      "cf-signals-approaches": {},
+      "cf-signals-points": {}
     };
     [
       "cf-roads", "cf-route", "cf-start-end", "cf-scenario-before",
@@ -214,7 +216,7 @@
       "cf-race-dijkstra", "cf-race-astar",
       "cf-race-explored", "cf-race-explored-edges",
       "cf-race-dijkstra-tracer", "cf-race-astar-tracer",
-      "cf-race-labels"
+      "cf-race-labels", "cf-signals-approaches", "cf-signals-points"
     ].forEach(function (id) {
       if (!map.getSource(id)) {
         map.addSource(id, Object.assign({ type: "geojson", data: empty }, defs[id] || {}));
@@ -578,6 +580,127 @@
         "line-color": ["get", "color"],
         "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.8, 12, 4.0],
         "line-opacity": 0.82
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-approaches-casing",
+      type: "line",
+      source: "cf-signals-approaches",
+      paint: {
+        "line-color": "#020711",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 5.8, 12, 7.8],
+        "line-opacity": 0.86,
+        "line-dasharray": [1.3, 0.45]
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-approaches-line",
+      type: "line",
+      source: "cf-signals-approaches",
+      paint: {
+        "line-color": [
+          "match", ["get", "status"],
+          "suboptimal", "#ff4fd8",
+          "watch", "#ff68d8",
+          "#54faff"
+        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 3.2, 12, 4.8],
+        "line-opacity": 0.98,
+        "line-dasharray": [1.3, 0.45]
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-points-circle",
+      type: "circle",
+      source: "cf-signals-points",
+      paint: {
+        "circle-radius": [
+          "case",
+          ["==", ["get", "status"], "selected"], 13.5,
+          ["==", ["get", "status"], "suboptimal"], 10.8,
+          10.0
+        ],
+        "circle-color": "#020711",
+        "circle-stroke-width": 1.4,
+        "circle-stroke-color": "rgba(255,255,255,0.82)",
+        "circle-opacity": 0.96
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-points-fill",
+      type: "circle",
+      source: "cf-signals-points",
+      paint: {
+        "circle-radius": [
+          "case",
+          ["==", ["get", "status"], "selected"], 9.8,
+          ["==", ["get", "status"], "suboptimal"], 7.8,
+          7.2
+        ],
+        "circle-color": [
+          "match", ["get", "status"],
+          "selected", "#54faff",
+          "optimal", "#39ff88",
+          "watch", "#ffd43b",
+          "suboptimal", "#ff3b6b",
+          "#54faff"
+        ],
+        "circle-stroke-width": 2.2,
+        "circle-stroke-color": "#020711",
+        "circle-opacity": 1.0
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-selected-casing",
+      type: "circle",
+      source: "cf-signals-points",
+      filter: ["==", ["get", "status"], "selected"],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 20, 12, 34],
+        "circle-color": "rgba(2, 7, 17, 0.42)",
+        "circle-stroke-width": 2.6,
+        "circle-stroke-color": "#020711",
+        "circle-opacity": 0.92
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-selected-ring",
+      type: "circle",
+      source: "cf-signals-points",
+      filter: ["==", ["get", "status"], "selected"],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 17, 12, 31],
+        "circle-color": "rgba(84, 250, 255, 0.14)",
+        "circle-stroke-width": 3.4,
+        "circle-stroke-color": "#fff0a3",
+        "circle-opacity": 0.98
+      }
+    });
+
+    addLayer({
+      id: "cf-signals-labels",
+      type: "symbol",
+      source: "cf-signals-points",
+      minzoom: 10,
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 11.4,
+        "text-offset": [0, 1.35],
+        "text-anchor": "top",
+        "text-allow-overlap": false
+      },
+      paint: {
+        "text-color": "#f5fbff",
+        "text-halo-color": "rgba(3,10,15,0.88)",
+        "text-halo-width": 1.8,
+        "text-opacity": 0.94
       }
     });
 
@@ -1124,6 +1247,9 @@
     setTimeMode(data.time_of_day || "Morning", true);
     const nodeById = Object.fromEntries((data.nodes || []).map(function (n) { return [n.id, n]; }));
     const scenario = data.scenario || null;
+    const signalOverlay = data.active_mode === "signals" && data.signals && data.signals.overlay
+      ? data.signals.overlay
+      : null;
     const affectedSet = new Set((scenario && scenario.affected_edges || []).map(edgeKey));
     const factor = scenario && !scenario.closed ? Number(scenario.factor || 1) : 1;
     const timeKey = data.time_key || "morning_peak";
@@ -1161,6 +1287,8 @@
     setSource("cf-maintain", maintainFeatures(data, nodeById));
     setSource("cf-bus", transitFeatures(data.active_mode === "transit" ? data.bus_routes : [], nodeById, "stops"));
     setSource("cf-metro", metroFeatures(data.active_mode === "transit" ? data.metro_lines : [], nodeById));
+    setSource("cf-signals-points", signalPointFeatures(signalOverlay));
+    setSource("cf-signals-approaches", signalApproachFeatures(signalOverlay));
     setSource("cf-nodes", pointFeatures((data.nodes || []).filter(function (n) { return n.kind === "neighborhood"; })));
     setSource("cf-facilities", pointFeatures((data.nodes || []).filter(function (n) { return n.kind === "facility"; })));
     setSource("cf-areas", areaFeatures(data.nodes || []));
@@ -1175,7 +1303,8 @@
       Boolean(heroPath && heroPath.length > 1),
       Boolean(scenario),
       Boolean(data.mst && data.mst.selected_edges && data.mst.selected_edges.length),
-      Boolean(data.race && data.race.dijkstra && data.race.astar)
+      Boolean(data.race && data.race.dijkstra && data.race.astar),
+      Boolean(signalOverlay && ((signalOverlay.points || []).length || (signalOverlay.approaches || []).length))
     );
     applyModeStyling(data.active_mode, Boolean(scenario));
     applyDisplayState();
@@ -1767,11 +1896,12 @@
     return null;
   }
 
-  function updateVisibility(mode, hasRoute, hasScenario, hasMst, hasRace) {
+  function updateVisibility(mode, hasRoute, hasScenario, hasMst, hasRace, hasSignals) {
     const inTransit = mode === "transit";
     const inMaintain = mode === "maintain";
     const inRace = mode === "race_lab" || mode === "race_panel";
-    const trafficRelevant = mode === "route" || mode === "emergency" || inRace || hasScenario;
+    const inSignals = mode === "signals";
+    const trafficRelevant = mode === "route" || mode === "emergency" || inRace || inSignals || hasScenario;
     setLayerVisibility(["cf-bus", "cf-metro"], inTransit);
     setLayerVisibility(["cf-maintain"], inMaintain);
     setLayerVisibility(["cf-traffic"], trafficRelevant);
@@ -1787,6 +1917,15 @@
       "cf-race-explored-edges-casing", "cf-race-explored-edges-line",
       "cf-race-dijkstra-tracer", "cf-race-astar-tracer", "cf-race-labels"
     ], inRace && hasRace);
+    setLayerVisibility([
+      "cf-signals-approaches-line",
+      "cf-signals-approaches-casing",
+      "cf-signals-points-circle",
+      "cf-signals-points-fill",
+      "cf-signals-selected-casing",
+      "cf-signals-selected-ring",
+      "cf-signals-labels"
+    ], inSignals && hasSignals);
   }
 
   function applyModeStyling(mode, hasScenario) {
@@ -1807,7 +1946,7 @@
     setPaint("cf-route-glow", "line-opacity", isEmergency ? 0.34 : theme.routeGlow);
     setPaint("cf-route-tracer", "circle-stroke-color", routeColor);
     setPaint("cf-roads-base", "line-opacity",
-      mode === "route" || mode === "emergency" || mode === "race_lab" ? Math.max(0.09, theme.roadOpacity * 0.72) : theme.roadOpacity);
+      mode === "route" || mode === "emergency" || mode === "race_lab" || mode === "signals" ? Math.max(0.09, theme.roadOpacity * 0.72) : theme.roadOpacity);
   }
 
   function updateStatus(data) {
@@ -1816,6 +1955,8 @@
     const tod = data.time_of_day || "Morning";
     const route = data.active_mode === "race_lab" && data.race
       ? "race overlay ready"
+      : data.active_mode === "signals" && data.signals && data.signals.overlay
+      ? "signal audit"
       : data.route && data.route.travel_time_min
       ? "ETA " + Number(data.route.travel_time_min).toFixed(1) + " min"
       : "network live";
@@ -1893,6 +2034,20 @@
           ? "Transfer pressure - " + data.transit.ranking.length + " hubs ranked"
           : kind.toUpperCase() + " optimization active";
       setPrimaryCard("Transit Analysis", summary, "Metro / bus overlay active", "transit");
+      return;
+    }
+    if (data.active_mode === "signals" && data.signals && data.signals.overlay) {
+      const overlay = data.signals.overlay || {};
+      const selected = (overlay.points || []).find(function (p) {
+        return String(p.id) === String(overlay.selected_intersection);
+      });
+      const selectedName = selected ? selected.name : "selected intersection";
+      setPrimaryCard(
+        "Greedy Signal Timing",
+        "Selected: " + String(selectedName) + " - Signal points: audited intersections",
+        "Connected approaches highlighted - bright dashed lines",
+        "signals"
+      );
       return;
     }
     if (data.active_mode === "route" && route) {
@@ -2215,6 +2370,50 @@
   function maintainFeatures(data, nodeById) {
     const selected = data.maintain && data.maintain.selected_roads ? data.maintain.selected_roads : [];
     return pathFeaturesFromEdges(selected.map(function (r) { return [String(r.from), String(r.to)]; }), nodeById, { kind: "maintain" });
+  }
+
+  function signalPointFeatures(overlay) {
+    if (!overlay || overlay.mode !== "signals") return empty;
+    return featureCollection((overlay.points || []).map(function (p) {
+      const lon = Number(p.lon);
+      const lat = Number(p.lat);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+      const green = p.green_seconds == null ? "n/a" : String(p.green_seconds) + "s";
+      const demand = p.demand == null ? "n/a" : formatCompact(Number(p.demand));
+      return pointCoordFeature([lon, lat], {
+        id: String(p.id || ""),
+        name: String(p.name || p.id || "Signal"),
+        status: String(p.status || "watch"),
+        green_seconds: p.green_seconds == null ? null : Number(p.green_seconds),
+        demand: p.demand == null ? null : Number(p.demand),
+        label: String(p.name || p.id || "Signal") + " - Greedy " + green + " / " + demand + " veh/h"
+      });
+    }).filter(Boolean));
+  }
+
+  function signalApproachFeatures(overlay) {
+    if (!overlay || overlay.mode !== "signals") return empty;
+    return featureCollection((overlay.approaches || []).map(function (a) {
+      const coords = (a.coordinates || []).map(function (c) {
+        return [Number(c[0]), Number(c[1])];
+      }).filter(function (c) {
+        return Number.isFinite(c[0]) && Number.isFinite(c[1]);
+      });
+      if (coords.length < 2) return null;
+      return {
+        type: "Feature",
+        properties: {
+          from: String(a.from || ""),
+          to: String(a.to || ""),
+          from_name: String(a.from_name || a.from || ""),
+          to_name: String(a.to_name || a.to || ""),
+          status: String(a.status || "watch"),
+          green_seconds: Number(a.green_seconds || 0),
+          demand: Number(a.demand || 0)
+        },
+        geometry: { type: "LineString", coordinates: coords }
+      };
+    }).filter(Boolean));
   }
 
   function pointFeatures(nodes) {

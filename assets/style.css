@@ -353,6 +353,28 @@ a { color: var(--accent); text-decoration: none; }
   letter-spacing: 0.02em;
 }
 
+.cf-algo-context {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px 0;
+}
+
+.cf-algo-context + .cf-algo-context {
+  margin-top: 10px;
+}
+
+.cf-algo-feature {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cf-algo-explain {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .cf-prog-panel {
   border: 1px solid rgba(255, 184, 0, 0.30);
   background: rgba(255, 184, 0, 0.04);
@@ -891,6 +913,202 @@ a { color: var(--accent); text-decoration: none; }
   letter-spacing: 0.01em;
 }
 
+/* ---------------- Signals / Greedy command center ---------------- */
+
+.cf-field-label {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cf-signals-note {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cf-signals-rule {
+  margin: 8px 0 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(43, 201, 210, 0.22);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: rgba(43, 201, 210, 0.07);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cf-signals-subtitle {
+  margin: 12px 0 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cf-signals-bars {
+  margin-top: 10px;
+}
+
+.cf-signals-bar {
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cf-signals-bar-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.cf-signals-bar-label strong {
+  color: var(--accent-warm);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cf-signals-bar-track {
+  height: 7px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cf-signals-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-warm));
+}
+
+.cf-signals-bar-meta {
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.cf-signals-board {
+  margin-top: 10px;
+}
+
+.cf-signals-map-legend {
+  margin-top: 10px;
+}
+
+.cf-signals-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.cf-signals-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.cf-signals-legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.cf-signals-legend-swatch.is-optimal {
+  background: #22c55e;
+}
+
+.cf-signals-legend-swatch.is-watch {
+  background: #f59e0b;
+}
+
+.cf-signals-legend-swatch.is-risk {
+  background: #ef4444;
+}
+
+.cf-signals-legend-swatch.is-selected {
+  background: #2bc9d2;
+  box-shadow: 0 0 0 2px rgba(215, 164, 72, 0.72);
+}
+
+.cf-signals-legend-swatch.is-approach {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: #54faff;
+  box-shadow: 0 0 0 2px rgba(2, 7, 17, 0.86);
+}
+
+.cf-signals-audit-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.cf-signals-audit-chip {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 8px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.cf-signals-audit-chip strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.cf-signals-audit-chip span:last-child {
+  grid-column: 2;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.cf-signals-status {
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cf-signals-status.is-optimal {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.cf-signals-status.is-watch {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.cf-signals-status.is-risk {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
 /* ---------------- Section title (above alt-route list) ---------------- */
 
 .cf-section-title {
@@ -1115,17 +1333,19 @@ select,
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: var(--bg-primary);
+  background:
+    radial-gradient(circle at 52% 34%, rgba(43, 201, 210, 0.12), transparent 30%),
+    linear-gradient(180deg, #071015 0%, var(--bg-primary) 78%);
   /* Subtle fade-in once the iframe loads */
-  animation: cf-hero-fadein 600ms ease-out both;
+  animation: cf-hero-fadein 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
   /* The hero unblurs internally during dismiss; the shell itself
      fades + scales gently so the handoff to the main app reads as a
      single continuous "snap to focus" rather than two separate UIs. */
-  transition: opacity 820ms cubic-bezier(0.16, 1, 0.3, 1),
-              transform 820ms cubic-bezier(0.16, 1, 0.3, 1),
-              filter 820ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: 50% 50%;
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
+  isolation: isolate;
 }
 
 .cf-hero-iframe {
@@ -1140,7 +1360,7 @@ select,
   opacity: 0;
   /* Subtle inward zoom — feels like the camera tightening focus
      on the same map the user is about to see in sharp detail. */
-  transform: scale(1.045);
+  transform: translateY(-8px) scale(0.985);
   pointer-events: none;
 }
 
@@ -1152,6 +1372,32 @@ select,
 @keyframes cf-hero-fadein {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+#cf-root {
+  opacity: 0.86;
+  transform: none;
+  filter: none;
+  transform-origin: 50% 50%;
+  transition:
+    opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#cf-root.cf-dashboard-reveal,
+#cf-root.cf-dashboard-ready {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-hero-shell,
+  #cf-root {
+    animation: none !important;
+    transition-duration: 1ms !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }
 
 /* ============================================================ */
@@ -2325,6 +2571,14 @@ body.cf-sidebar-resizing * {
   text-align: right;
 }
 
+.cf-race-cost-stack {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 8px;
+  min-width: min(260px, 100%);
+}
+
 .cf-race-map-panel.is-astar .cf-race-cost-chip {
   border-color: rgba(255, 184, 0, 0.24);
   background: rgba(255, 184, 0, 0.055);
@@ -2596,6 +2850,51 @@ body.cf-sidebar-resizing * {
   letter-spacing: 0.06em;
 }
 
+.cf-route-scenario-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cf-route-scenario-name {
+  color: var(--accent-warm);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cf-route-scenario-note,
+.cf-route-scenario-copy {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.cf-route-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.cf-route-compare-col {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.cf-route-compare-title {
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 850;
+}
+
 @media (max-width: 720px) {
   .cf-main-workspace.is-race-lab {
     display: flex;
@@ -2622,10 +2921,25 @@ body.cf-sidebar-resizing * {
     grid-template-rows: auto minmax(84px, 118px) clamp(280px, 42vh, 340px);
   }
 
+  .cf-race-map-head {
+    flex-direction: column;
+  }
+
+  .cf-race-cost-stack {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cf-race-cost-chip {
+    min-width: 0;
+    text-align: left;
+  }
+
   .cf-race-grid,
   .cf-race-meta-grid,
   .cf-race-objective-grid,
-  .cf-race-insights {
+  .cf-race-insights,
+  .cf-route-compare-grid {
     grid-template-columns: 1fr;
   }
 

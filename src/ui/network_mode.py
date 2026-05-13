@@ -7,6 +7,7 @@ from dash import dcc, html
 
 from src.algorithms.trace import AlgorithmTrace
 from src.ui.components import (
+    algorithm_context,
     cf_button,
     cf_icon,
     empty_state,
@@ -43,16 +44,21 @@ def render_network_panel(active_algo: str = "kruskal") -> list:
     sidebar dispatcher."""
     return [
         info_card(
-            title="Algorithm",
+            title="Infrastructure Network Design",
             body=html.Div(
                 [
+                    algorithm_context(
+                        "Infrastructure Network Design",
+                        "Kruskal MST / Prim MST",
+                        "Builds a low-cost connection network using minimum spanning tree algorithms.",
+                    ),
                     render_algo_pills(active_algo),
                     dcc.Checklist(
                         id="mst-options",
                         options=[
                             {"label": " Population-weighted",
                              "value": "weighted"},
-                            {"label": " Guarantee hospital & government connectivity",
+                            {"label": " Prioritize critical facility connectivity",
                              "value": "must_include"},
                         ],
                         value=["must_include"],
@@ -139,9 +145,14 @@ def render_stats_card(stats: dict[str, Any]) -> html.Div:
     covered = stats.get("covered_nodes", 0) or 1
     cost_per_node = cost / covered if covered else 0.0
     return info_card(
-        title="MST Result",
+        title="Infrastructure Network Design Result",
         body=html.Div(
             [
+                algorithm_context(
+                    "Infrastructure Network Design",
+                    "Minimum Spanning Tree",
+                    "Connects the reachable city network with the lowest available construction cost.",
+                ),
                 _row("Total MST cost", cost_display, accent=True, icon="lucide:wallet"),
                 _row("Cost-effectiveness",
                      f"EGP {cost_per_node:,.2f}M per connected node",
@@ -178,9 +189,14 @@ def render_stats_card(stats: dict[str, Any]) -> html.Div:
 def render_algo_details_card(trace: AlgorithmTrace) -> html.Div:
     p = trace.parameters
     return info_card(
-        title="Algorithm details",
+        title="Network Algorithm Details",
         body=html.Div(
             [
+                algorithm_context(
+                    "MST Computation",
+                    trace.name,
+                    "Shows the graph strategy, data structure, and runtime used for network design.",
+                ),
                 _row("Algorithm", trace.name, icon="lucide:cpu"),
                 _row("Time complexity", trace.complexity_time, icon="lucide:clock"),
                 _row("Space complexity", trace.complexity_space, icon="lucide:database"),

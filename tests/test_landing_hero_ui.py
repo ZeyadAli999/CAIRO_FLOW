@@ -6,10 +6,20 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HERO = ROOT / "assets" / "hero.html"
+CLIENTSIDE = ROOT / "assets" / "clientside.js"
+STYLE = ROOT / "assets" / "style.css"
 
 
 def _hero() -> str:
     return HERO.read_text(encoding="utf-8")
+
+
+def _clientside() -> str:
+    return CLIENTSIDE.read_text(encoding="utf-8")
+
+
+def _style() -> str:
+    return STYLE.read_text(encoding="utf-8")
 
 
 def test_explore_algorithms_opens_mission_briefing_not_map():
@@ -26,6 +36,8 @@ def test_explore_algorithms_opens_mission_briefing_not_map():
 def test_hero_preserves_start_and_trace_message_actions():
     html = _hero()
 
+    assert 'id="ctos-start"' in html
+    assert 'id="ctos-explore"' in html
     assert 'document.getElementById("ctos-start").addEventListener("click", () => dismiss("start"))' in html
     assert 'briefingStart.addEventListener("click", () => dismiss("start"))' in html
     assert 'briefingTrace.addEventListener("click", () => dismiss("explore"))' in html
@@ -75,3 +87,40 @@ def test_hero_accessibility_motion_and_no_emoji_icons():
     import re
 
     assert re.search(f"[{emoji_ranges}]", html) is None
+
+
+def test_hero_transition_classes_and_reduced_motion_contract():
+    html = _hero()
+    css = _style()
+    js = _clientside()
+
+    assert "body.dismissing .hero-copy" in html
+    assert "body.dismissing .route-preview" in html
+    assert "body.dismissing .briefing" in html
+    assert "prefersReducedMotion" in html
+    assert ".cf-hero-shell.dismissed" in css
+    assert "#cf-root.cf-dashboard-reveal" in css
+    assert "#cf-root.cf-dashboard-ready" in css
+    assert "@media (prefers-reduced-motion: reduce)" in css
+    assert "cf-dashboard-reveal" in js
+    assert "cf-dashboard-ready" in js
+    assert "prefers-reduced-motion: reduce" in js
+    assert "ctos-hero-dismiss" in js
+
+
+def test_landing_transition_avoids_heavy_or_persistent_dashboard_blur():
+    html = _hero()
+    css = _style()
+    js = _clientside()
+
+    dashboard_block = css[css.index("#cf-root {"):css.index("#cf-root.cf-dashboard-reveal")]
+    hero_shell_block = css[css.index(".cf-hero-shell.dismissed"):css.index("/* Once dismissed")]
+
+    assert "filter: none" in dashboard_block
+    assert "blur(" not in dashboard_block
+    assert "blur(" not in hero_shell_block
+    assert "root.classList.remove('cf-dashboard-reveal')" in js
+    assert "root.classList.remove('cf-dashboard-ready')" in js
+    assert "shell.classList.remove('is-dismissing')" in js
+    assert "filter: blur(4px)" not in html
+    assert "filter: blur(5px)" not in css

@@ -114,6 +114,31 @@ def algorithm_badge(trace: AlgorithmTrace) -> html.Span:
     )
 
 
+def algorithm_context(
+    feature: str,
+    algorithm: str,
+    explanation: str,
+    *,
+    prefix: str = "Algorithm",
+    icon: str = "lucide:cpu",
+) -> html.Div:
+    """Compact professor-facing bridge from feature name to algorithm."""
+    return html.Div(
+        [
+            html.Div(feature, className="cf-algo-feature"),
+            html.Div(
+                [
+                    cf_icon(icon, size=12, style={"marginRight": "5px"}),
+                    html.Span(f"{prefix}: {algorithm}"),
+                ],
+                className="cf-algo-chip",
+            ),
+            html.Div(explanation, className="cf-algo-explain"),
+        ],
+        className="cf-algo-context",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Programmer panel
 # ---------------------------------------------------------------------------

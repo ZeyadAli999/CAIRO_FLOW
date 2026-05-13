@@ -128,15 +128,35 @@ Object.assign(window.dash_clientside.cf, {
   if (window.__ctosHeroBridgeInstalled) return;
   window.__ctosHeroBridgeInstalled = true;
 
+  function prefersReducedMotion() {
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
   function dismiss(action) {
     var shell = document.getElementById('cf-hero-shell');
     if (!shell) return;
-    shell.classList.add('dismissed');
-    // Match the faster shell transition before removing from layout so the
-    // handoff feels like one deliberate move into the control map.
+    if (shell.classList.contains('dismissed')) return;
+    var root = document.getElementById('cf-root');
+    var reduceMotion = prefersReducedMotion();
+    if (root) {
+      root.classList.add('cf-dashboard-reveal');
+      root.classList.remove('cf-dashboard-ready');
+    }
+    shell.classList.add('is-dismissing');
+    requestAnimationFrame(function () {
+      shell.classList.add('dismissed');
+    });
     setTimeout(function () {
       shell.classList.add('removed');
-    }, 860);
+      shell.classList.remove('is-dismissing');
+      if (root) {
+        root.classList.add('cf-dashboard-ready');
+        root.classList.remove('cf-dashboard-reveal');
+        setTimeout(function () {
+          root.classList.remove('cf-dashboard-ready');
+        }, reduceMotion ? 0 : 60);
+      }
+    }, reduceMotion ? 40 : 460);
 
     if (action === 'explore') {
       // Defer briefly so the dismiss animation reads cleanly, then
@@ -145,7 +165,7 @@ Object.assign(window.dash_clientside.cf, {
       setTimeout(function () {
         var t = document.getElementById('programmer-mode-toggle');
         if (t) t.click();
-      }, 420);
+      }, reduceMotion ? 0 : 260);
     }
   }
 
@@ -211,7 +231,13 @@ Object.assign(window.dash_clientside.cf, {
   function showHero() {
     var shell = document.getElementById('cf-hero-shell');
     if (!shell) return;
+    var root = document.getElementById('cf-root');
+    if (root) {
+      root.classList.remove('cf-dashboard-reveal');
+      root.classList.remove('cf-dashboard-ready');
+    }
     shell.classList.remove('removed');
+    shell.classList.remove('is-dismissing');
     requestAnimationFrame(function () {
       shell.classList.remove('dismissed');
       postTheme(currentTheme());

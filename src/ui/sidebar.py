@@ -14,6 +14,7 @@ from src.ui.maintain_mode import render_maintain_panel
 from src.ui.network_mode import render_network_panel
 from src.ui.race_view import render_race_panel
 from src.ui.route_mode import render_route_panel
+from src.ui.signals_mode import render_signals_panel
 from src.ui.transit_mode import render_transit_panel
 
 
@@ -42,6 +43,8 @@ def placeholder_for(mode: str) -> list:
         return render_transit_panel()
     if mode == "race_lab":
         return render_race_panel()
+    if mode == "signals":
+        return render_signals_panel()
     return [
         info_card(
             title="Mode",
