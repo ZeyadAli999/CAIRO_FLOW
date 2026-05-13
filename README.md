@@ -1,274 +1,431 @@
-# CairoFlow
+# CairoFlow — Smart City Transportation Network Optimizer for Greater Cairo
 
-Smart City Transportation Network Optimizer for Greater Cairo. Built
-for CSE112 (Design & Analysis of Algorithms). All four phases shipped.
+CairoFlow is an interactive CSE112 **Design & Analysis of Algorithms** project that models Greater Cairo as a weighted transportation network. It demonstrates how graph algorithms, dynamic programming, greedy optimization, simulation, machine learning, and premium map visualization can support smart-city transportation decisions.
+
+The project is delivered as a live Dash + MapLibre web dashboard with deployable engineering support through Render and Docker.
+
+---
 
 ## Submission Links
 
 | Item | Link |
 |---|---|
-| GitHub repository | TODO: add GitHub repo URL |
-| Live demo | TODO: add Render live demo URL |
-| Demo video | TODO: add demo video URL |
-| LinkedIn post | TODO: add LinkedIn post URL |
+| GitHub Repository | https://github.com/ZeyadAli999/CAIRO_FLOW |
+| Live Demo | https://cairo-flow.onrender.com |
+| Health Check | https://cairo-flow.onrender.com/healthz |
+| Demo Video | https://drive.google.com/file/d/1KsuF2ga9XD7zP1jJdw31tu_ZgH-R6fJG/view?usp=sharing |
+| LinkedIn Post | https://www.linkedin.com/posts/zeyad-said-033472357_smartcities-transportationtechnology-algorithms-ugcPost-7460179410831360001-YodU?utm_source=share&utm_medium=member_desktop&rcm=ACoAAFjhJKcBSB5e-KBvzjrJ7xr3OZZrtpfhndo |
 
-Deployment and bonus documentation:
+---
 
-- [Deployment guide](docs/deployment.md)
-- [AI tools and technologies](docs/ai_tools_and_technologies.md)
-- [Submission notes](docs/submission_notes.md)
+## Final Verification Status
 
-## What's inside
+| Check | Result |
+|---|---|
+| Latest Git Commit | `ace2d05` — `Finalize CairoFlow demo polish and scenario features` |
+| Full Test Suite | `201 passed` |
+| App Import | `app import ok` |
+| Render Health Check | `tests_passing: true`, `callbacks_registered: 42` |
+| Docker Build | `docker build -t cairoflow .` succeeded |
+| Docker Runtime | `docker run --rm -p 8050:8050 cairoflow` started Gunicorn successfully |
+| Docker Health Check | `/healthz` returned HTTP `200 OK` |
 
-- **Network mode** — Kruskal & Prim MST, population-weighted variant,
-  cost-effectiveness analysis vs building all potential roads.
-- **Route mode** — Dijkstra, time-aware Dijkstra (BPR), A*, top-K
-  alternative routes with edge penalties, "avoid these roads"
-  exclusions, congestion-segmented overlays.
-- **Emergency mode** — A* with admissible heuristic, A*-vs-Dijkstra
-  performance comparison, traffic-aware vs naive-routing impact card,
-  faded exploration frontier on the map.
-- **Maintain mode** — 0/1 knapsack DP for road repair budgeting at any
-  budget from 200 to 2000 M EGP.
-- **Transit mode** — bus & metro fleet allocation DPs, multimodal
-  Dijkstra (road + metro + bus + transfer penalty), transfer-hub
-  ranking by usage × demand.
-- **Simulation framework** — 8 scenarios with both Python API and
-  CLI: `peak_rush`, `road_closure`, `emergency_dispatch`,
-  `all_pairs_baseline`, `transit_optimization`, `maintenance_budget`,
-  `signal_audit`, `multimodal_demand`.
-- **Programmer Mode** — every algorithm exposes an `AlgorithmTrace`
-  dataclass with complexity, runtime, formula, plain-English
-  explanation, and the function source — toggled live from the topbar.
-- **Bonus route lab** — side-by-side Dijkstra vs A* race replay and an
-  ML traffic-forecast card powered by a scikit-learn random forest.
-  The ML Forecast card is demo-ready in Route Mode and appears
-  immediately below the `ML forecast` button.
-- **Premium Cairo control map** - MapLibre GL JS front end centered on
-  Egypt and Greater Cairo, with 3D-style facility/neighborhood
-  extrusions, traffic-colored corridors, day/night atmosphere, route
-  glow, transit overlays, and maintenance/scenario highlighting.
-- **Interactive city controls** - Play 24h advances Morning,
-  Afternoon, Evening, Night, then back to Morning while preserving the
-  current route/scenario. What If scenarios temporarily adjust a copied
-  graph in memory and compare before/after ETA without changing the
-  seeded data or algorithm implementations.
+---
+
+## What CairoFlow Demonstrates
+
+CairoFlow is organized around the main algorithmic requirements of a smart transportation system:
+
+| Area | Algorithms / Models | Where It Appears |
+|---|---|---|
+| Infrastructure Network Design | Kruskal MST, Prim MST, Population-Weighted MST | Network Mode |
+| Route Planning | Dijkstra, A* Search, Time-Dependent Dijkstra, BPR traffic-time model | Route Mode |
+| Algorithm Comparison | Dijkstra vs A* Race, explored nodes, explored edges, replay | Race Lab |
+| Traffic Scenarios | Normal Traffic, Peak Congestion, Incident on Shortest Route | Route Mode + Race Lab |
+| Emergency Dispatch | A* Emergency Routing, traffic-aware response time | Emergency Mode |
+| Road Maintenance | 0/1 Knapsack Dynamic Programming | Maintain Mode |
+| Transit Optimization | Bus Fleet Allocation DP, Metro Train-Hour Allocation DP | Transit Mode |
+| Multimodal Planning | Multimodal Shortest Path, Transfer Hub Ranking | Transit Mode |
+| Greedy Optimization | Greedy Signal Timing, Greedy Emergency Preemption | Signals Mode |
+| Machine Learning | scikit-learn RandomForestRegressor traffic forecast | Route Mode ML Forecast |
+| Simulation | Peak rush, road closure, emergency dispatch, maintenance, transit, signals | Simulation Framework |
+| Visualization | Premium MapLibre Cairo map, overlays, 24h time presets | Main Dashboard |
+
+---
+
+## Bonus Coverage
+
+This section maps CairoFlow directly to the CSE112 bonus checklist.
+
+| Bonus Requirement | CairoFlow Evidence |
+|---|---|
+| Early Submission | Submission time can be proven through LMS/GitHub timestamps. |
+| AI Tools & Technologies | See `docs/ai_tools_and_technologies.md`. |
+| Enhanced Visualization & UI | Premium landing hero, Algorithm Mission Briefing, MapLibre Cairo dashboard, Race Lab, Signals map overlay, algorithm badges, smooth transitions. |
+| Deployment & Engineering | Render deployment, `/healthz`, Dockerfile, Docker runtime proof, automated tests. |
+| GitHub Repo + Good README + Demo + LinkedIn Post | GitHub repository, final README, demo video, and LinkedIn post are linked above. |
+| ML-Based Traffic Prediction | Route Mode ML Forecast uses scikit-learn RandomForestRegressor trained on temporal traffic data. |
+| Side-by-Side Algorithm Visualizer | Race Lab compares Dijkstra vs A* with map panels, explored nodes, explored edges, replay, and winners. |
+| Live Web App | https://cairo-flow.onrender.com |
+| Docker Containerization | `Dockerfile`, `.dockerignore`, successful `docker build`, successful `docker run`, and health check. |
+
+---
+
+## Best Demo Flow for Professors
+
+Use this exact flow during the live demo:
+
+1. **Landing Hero**
+   - Open the live app.
+   - Show the premium CairoFlow landing hero.
+   - Click **Explore Algorithms** to show the Algorithm Mission Briefing.
+
+2. **Start Simulation**
+   - Click **Start Simulation**.
+   - Show the main dashboard and the Cairo map.
+
+3. **Route Mode — Shortest Is Not Always Fastest**
+   - Open **Route Mode**.
+   - Use:
+     - From: `1`
+     - To: `11`
+     - Scenario: `Peak Congestion`
+     - Time: `Morning`
+   - Show:
+     - Shortest-distance route: `1 → 3 → F2 → 11`, `14.60 km`, `48.00 min`
+     - Traffic-aware route: `1 → 8 → 10 → 11`, `18.20 km`, `20.02 min`
+   - Explain:
+     - Dijkstra wins shortest distance.
+     - Traffic-aware routing wins travel time.
+     - Distance is compared with distance, and minutes are compared with minutes.
+
+4. **Race Lab — Dijkstra vs A***
+   - Open **Race Lab**.
+   - Use `1 → 11`, `Peak Congestion`.
+   - Show side-by-side Dijkstra and A* panels.
+   - Explain:
+     - Dijkstra expands by lowest known cost.
+     - A* uses a heuristic to explore fewer nodes.
+     - A* can reach the same or better objective with less search effort.
+
+5. **Signals Mode — Greedy Algorithm**
+   - Open **Signals**.
+   - Select `Morning` and an intersection such as `Maadi (1)` or `Dokki (10)`.
+   - Click **Run Greedy Signal Audit**.
+   - Show:
+     - Greedy Signal Timing
+     - Green-time allocations
+     - Gini fairness score
+     - Selected intersection and connected approaches on the map
+     - Emergency Preemption using Greedy Priority Scheduling
+
+6. **Network Mode — MST**
+   - Open **Network Mode**.
+   - Show Kruskal MST and Prim MST.
+   - Explain the infrastructure design objective.
+
+7. **Emergency Mode**
+   - Show emergency A* dispatch.
+   - Recommended demo: `11 → Medical`, selected facility `F9`, traffic-aware response time around `8.32 min`.
+
+8. **Transit Mode**
+   - Show Bus Fleet Allocation DP, Metro Train-Hour Allocation DP, and Multimodal Shortest Path.
+
+9. **Maintain Mode**
+   - Show Road Maintenance Planning with 0/1 Knapsack DP.
+   - Recommended budget example: `500M EGP`.
+
+10. **ML Forecast**
+    - Open Route Mode ML Forecast.
+    - Show that predictions change by time of day.
+
+---
+
+## Key Demo Numbers
+
+| Feature | Best Case | Result |
+|---|---|---|
+| Route Scenario | `1 → 11`, Peak Congestion | Shortest: `14.60 km / 48.00 min`; Traffic-aware: `18.20 km / 20.02 min` |
+| Race Lab | `1 → 11`, Peak Congestion | Dijkstra explored `10`; A* explored `4` |
+| Search Efficiency | `3 → F1`, Incident | A* explores `8` fewer nodes |
+| Emergency | `11 → Medical` | Selected `F9`, about `7.57 km`, `8.32 min` |
+| Maintenance DP | `500M EGP` budget | 5 selected repairs, `234.5M` cost, benefit around `279.97` |
+| Transit | Bus DP / Metro DP | Bus and metro allocations optimized with DP |
+| ML Forecast | `1 → F1` | Predicted congestion changes by time of day |
+| Docker | `docker build -t cairoflow .` | Build completed successfully |
+| Health Check | `/healthz` | HTTP `200 OK`, `tests_passing: true` |
+
+---
 
 ## Quickstart
 
-```bash
+### Windows PowerShell
+
+```powershell
 python -m venv .venv
-. .venv/Scripts/activate              # Windows: .venv\Scripts\activate
+.\.venv\Scripts\activate
 pip install -r requirements.txt
-python app.py                         # or: .\.venv\Scripts\python.exe app.py
+python app.py
 ```
 
-Then open http://127.0.0.1:8050.
+Then open:
 
-On first run, `data/cairo.db` is seeded from the CSVs in `data/raw/`.
+```text
+http://127.0.0.1:8050
+```
+
+On first run, CairoFlow seeds `data/cairo.db` from the CSV files in `data/raw/`.
+
+---
 
 ## Docker
 
+Build the image:
+
 ```bash
 docker build -t cairoflow .
+```
+
+Run the container:
+
+```bash
 docker run --rm -p 8050:8050 cairoflow
 ```
 
-Then open http://127.0.0.1:8050.
+Open:
 
-The container uses the existing `requirements.txt` and starts the app
-with:
+```text
+http://127.0.0.1:8050
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8050/healthz
+```
+
+Expected result:
+
+```text
+HTTP 200 OK
+tests_passing: true
+```
+
+The container starts the app with Gunicorn:
 
 ```bash
 gunicorn app:server --bind 0.0.0.0:${PORT:-8050}
 ```
 
+---
+
 ## Render Deployment
 
-The repository includes `render.yaml` for Render Web Service deployment.
+The project includes `render.yaml` for Render deployment.
 
-Render settings:
+Recommended Render settings:
 
-- Build command: `pip install -r requirements.txt`
-- Start command: `gunicorn app:server --bind 0.0.0.0:$PORT`
-- Health check path: `/healthz`
+| Setting | Value |
+|---|---|
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `gunicorn app:server --bind 0.0.0.0:$PORT` |
+| Health Check Path | `/healthz` |
 
-See [docs/deployment.md](docs/deployment.md) for the full deployment
-checklist.
+Live demo:
 
-## Premium 3D Map Setup
+```text
+https://cairo-flow.onrender.com
+```
 
-The dashboard map uses MapLibre GL JS with vector styles, not pitched
-raster tiles. The browser needs internet access for MapLibre and vector
-tile/CDN resources.
+Health check:
+
+```text
+https://cairo-flow.onrender.com/healthz
+```
+
+---
+
+## Run Tests
+
+Full test suite:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Verified result:
+
+```text
+201 passed
+```
+
+App import check:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import app; print('app import ok')"
+```
+
+JavaScript syntax checks:
+
+```powershell
+node --check assets\clientside.js
+node --check assets\maplibre_view.js
+node --check assets\race.js
+```
+
+---
+
+## Health Endpoint
+
+Local:
+
+```bash
+curl http://127.0.0.1:8050/healthz
+```
+
+Live:
+
+```bash
+curl https://cairo-flow.onrender.com/healthz
+```
+
+The endpoint reports:
+
+- `tests_passing`
+- `callbacks_registered`
+- `assets_present`
+- `lucide_icons_in_layout`
+- `phase`
+- `version`
+
+---
+
+## Simulation CLI
+
+Run scenario simulations from the command line:
+
+```bash
+# Peak traffic
+python -m src.simulation.framework --scenario peak_rush --from 1 --to F1
+
+# Road closure
+python -m src.simulation.framework --scenario road_closure --from 1 --to 2 --closed "1-3"
+
+# Emergency dispatch
+python -m src.simulation.framework --scenario emergency_dispatch --from 11 --facility-type "Transit Hub"
+
+# Maintenance DP
+python -m src.simulation.framework --scenario maintenance_budget
+
+# Transit DP
+python -m src.simulation.framework --scenario transit_optimization --total-buses 200
+
+# Greedy signal audit
+python -m src.simulation.framework --scenario signal_audit --tod morning_peak
+
+# Multimodal demand
+python -m src.simulation.framework --scenario multimodal_demand
+```
+
+Add `--json` to emit machine-readable output.
+
+---
+
+## Premium MapLibre Setup
+
+CairoFlow uses MapLibre GL JS for the main Cairo map.
+
+The browser needs internet access for vector tiles/CDN map resources.
 
 Style priority:
 
-1. `MAP_STYLE_URL` - use any MapLibre-compatible style JSON URL.
-2. `MAPTILER_KEY` - uses MapTiler `streets-v2`.
-3. OpenFreeMap Bright - keyless vector fallback used for local demos.
+1. `MAP_STYLE_URL` — any MapLibre-compatible style JSON URL.
+2. `MAPTILER_KEY` — MapTiler `streets-v2`.
+3. OpenFreeMap Bright — keyless fallback for local demos.
 
-Real 3D building extrusions appear when the loaded vector style exposes a
-building source/layer. If no real building source is available, CairoFlow
-uses dataset-based operational extrusions for neighborhoods/facilities.
-Those fallback extrusions are an operational visualization, not real
-Cairo building footprints.
+If vector resources cannot load, CairoFlow shows a non-blocking warning instead of pretending a broken map is premium.
 
-If vector resources cannot load, the map shows a non-blocking warning
-instead of silently presenting a blurry raster fallback as premium.
+---
 
-## Demo Flow
+## Time-of-Day Behavior
 
-1. Start the app with `python app.py`.
-2. Click `Start Simulation`.
-3. Show the Morning view.
-4. Switch to Afternoon.
-5. Switch to Evening.
-6. Switch to Night.
-7. Run Maadi -> Cairo International Airport.
-8. Press `Play 24h`.
-9. Open `What If?`.
-10. Apply `Road closure`.
-11. Show before/after ETA.
-12. Click `Reset Scenario`.
-13. Run `Dijkstra vs A*` race.
-14. Click `ML forecast` and show the visible ML prediction card.
-15. Show Emergency mode.
-16. Show Transit mode.
+Time of Day affects real outputs, not only the map style.
 
-## Data optimization layer
-
-The original CSV dataset in `data/raw/` remains the source of truth.
-CairoFlow also includes an opt-in data optimization layer under
-`src/data/` for validation, enriched graph views, inferred Medical
-emergency connectors, and heuristic potential-road recommendations.
-
-- `build_base_graph()` preserves original existing-road behavior.
-- `build_emergency_graph()` adds clearly marked inferred Medical
-  connectors for F9/F10 emergency routing.
-- `recommend_potential_roads()` ranks potential roads with an
-  explainable heuristic; it does not edit source data.
-
-## Bonus Coverage
-
-| Bonus item | Current evidence |
+| Module | Effect |
 |---|---|
-| Early submission | External proof required; record it in `docs/submission_notes.md`. |
-| AI tools & technologies | Documented in `docs/ai_tools_and_technologies.md`. |
-| Enhanced visualization & UI | Dash dashboard, MapLibre map, algorithm panels, race visualizer, ML Forecast card. |
-| Deployment & engineering | `Dockerfile`, `.dockerignore`, `render.yaml`, `/healthz`, reliable pytest command. |
-| GitHub + demo + LinkedIn | Placeholders included above; final links must be added after publishing. |
-| ML traffic prediction | `src/ml/traffic_predictor.py`, Route Mode ML Forecast card, and ML tests. |
-| Dijkstra vs A* comparison | `src/algorithms/race.py`, `src/ui/race_view.py`, `assets/race.js`, and race tests. |
-| Live web app | Render config is present; final URL must be added after deployment. |
-| Docker containerization | `Dockerfile` and `.dockerignore` are present. |
+| Route Mode | Traffic-time and sometimes traffic-aware path change by time. |
+| Race Lab | Traffic-time metrics change by time; explored nodes may stay stable for the same search objective. |
+| Signals Mode | Demand, green allocation, Gini, and status counts change by time. |
+| ML Forecast | Predicted congestion changes by time. |
+| Map | Visual preset changes between Morning, Afternoon, Evening, and Night. |
 
-## Run tests
+---
 
-```bash
-.\.venv\Scripts\python.exe -m pytest -q tests
-```
+## Data and Safety Notes
 
-The full suite covers Phase 1 (DB, graph), Phase 2 (MST), Phase 3
-(shortest path + simulator), Phase 4 (DP + greedy + multimodal +
-correctness suite), the safe data optimization layer, Emergency Medical
-coverage, potential-road recommendations, plus bonus ML and
-algorithm-race coverage. 151 tests are currently passing.
+The original CSV files in `data/raw/` remain the source of truth.
 
-With the virtual environment activated, `pytest -q` also works because
-`pytest.ini` limits discovery to `tests/` and ignores old temporary
-workspace folders.
+CairoFlow uses safe, clearly separated layers:
 
-## Verify health (live)
+- Scenario changes are applied in memory only.
+- Raw data is not mutated by traffic scenarios.
+- Emergency Medical connectors are inferred and marked for emergency routing.
+- ML forecasting is educational and based on the provided temporal traffic dataset.
+- All major algorithms are implemented in source code and exposed through UI badges, explanations, or traces.
 
-```bash
-curl -s http://127.0.0.1:8050/healthz | python -m json.tool
-```
+---
 
-Returns `tests_passing`, `callbacks_registered`,
-`assets_present`, `lucide_icons_in_layout`, current ISO timestamp.
+## Project Structure
 
-## Run a simulation scenario from the command line
-
-```bash
-# DP scenarios
-python -m src.simulation.framework --scenario maintenance_budget
-python -m src.simulation.framework --scenario transit_optimization --total-buses 200
-
-# Greedy
-python -m src.simulation.framework --scenario signal_audit --tod morning_peak
-
-# Multimodal
-python -m src.simulation.framework --scenario multimodal_demand
-
-# Phase 3 scenarios
-python -m src.simulation.framework --scenario peak_rush --from 1 --to F1
-python -m src.simulation.framework --scenario road_closure --from 1 --to 2 --closed "1-3"
-python -m src.simulation.framework --scenario emergency_dispatch --from 11 --facility-type "Transit Hub"
-python -m src.simulation.framework --scenario all_pairs_baseline
-```
-
-Add `--json` to any scenario to emit machine-readable output.
-
-## Browser cache
-
-The app sends `Cache-Control: no-cache, no-store, must-revalidate`
-on the index page so a hard refresh (`Ctrl+Shift+R` / `Cmd+Shift+R`)
-isn't usually needed. If you see stale CSS or assets, hard-refresh
-once or open an incognito window.
-
-## Layout
-
-```
+```text
 cairoflow/
-├── app.py                    Dash entry point + 29 callbacks + /healthz
-├── conftest.py
+├── app.py                         Dash entry point, callbacks, /healthz
 ├── requirements.txt
+├── Dockerfile
+├── render.yaml
 ├── data/
-│   ├── raw/*.csv             8 source datasets
-│   └── cairo.db              SQLite, created on first run
+│   ├── raw/                       Original CSV datasets
+│   └── cairo.db                   SQLite database created on first run
 ├── src/
-│   ├── config.py
-│   ├── db/                   SQLAlchemy models, seed, queries
-│   ├── graph/                NetworkX builder (build_graph + build_mst_graph)
 │   ├── algorithms/
-│   │   ├── trace.py          AlgorithmTrace dataclass — UI contract
-│   │   ├── mst.py            Kruskal, Prim, population-weighted MST
-│   │   ├── shortest_path.py  Dijkstra, BPR, A*, alternatives, nearest facility
-│   │   ├── race.py           Step-captured Dijkstra vs A* replay data
-│   │   ├── dp.py             Bus/metro scheduling, knapsack, memoization
-│   │   ├── greedy.py         Signal allocation, preemption, audit
-│   │   └── multimodal.py     Road+metro+bus fused graph, transfer analysis
+│   │   ├── mst.py                 Kruskal, Prim, population-weighted MST
+│   │   ├── shortest_path.py       Dijkstra, A*, BPR, alternatives
+│   │   ├── race.py                Dijkstra vs A* replay data
+│   │   ├── dp.py                  Knapsack, bus/metro DP, memoization
+│   │   ├── greedy.py              Signal timing, preemption, audit
+│   │   └── multimodal.py          Road + metro + bus graph
+│   ├── graph/
+│   │   └── builder.py             NetworkX graph builders
 │   ├── ml/
-│   │   └── traffic_predictor.py
+│   │   └── traffic_predictor.py   scikit-learn forecast model
+│   ├── scenarios/
+│   │   └── traffic_scenarios.py   In-memory scenario calibration
 │   ├── simulation/
-│   │   └── framework.py      TransportSimulator + 8 scenarios + CLI
+│   │   └── framework.py           Scenario simulation API and CLI
 │   └── ui/
-│       ├── components.py     cf_icon, cf_button, empty_state, programmer_panel
-│       ├── layout.py         topbar, control strip, dcc.Stores
-│       ├── sidebar.py        mode-pill dispatcher
-│       ├── network_mode.py   MST controls
-│       ├── route_mode.py     Routing controls
-│       ├── emergency_mode.py Dispatch controls
-│       ├── maintain_mode.py  Repair-budget DP
-│       ├── transit_mode.py   Bus / metro / multimodal / transfers
-│       ├── map_view.py       Map shell + hidden Leaflet compatibility layers
-│       └── theme.py          Color tokens
+│       ├── network_mode.py
+│       ├── route_mode.py
+│       ├── race_view.py
+│       ├── emergency_mode.py
+│       ├── maintain_mode.py
+│       ├── transit_mode.py
+│       ├── signals_mode.py
+│       └── layout.py
 ├── assets/
-│   ├── NEW_LOGO.png          User-supplied logo
+│   ├── hero.html                  Landing hero + Algorithm Mission Briefing
 │   ├── style.css
-│   ├── clientside.js         Success-pulse, hero bridge, MapLibre bridge
-│   ├── maplibre_view.html    Premium Cairo MapLibre iframe
-│   ├── maplibre_view.js      MapLibre layers, 24h visuals, scenario overlays
-│   ├── race.js               Route race canvas animator
-│   └── logo.svg              (vestigial; kept on disk per spec)
-├── tests/                    151 passing pytest tests
-├── PHASE1_NOTES.md
-├── PHASE2_NOTES.md
-├── PHASE3_NOTES.md
-└── PHASE4_NOTES.md
+│   ├── clientside.js              Dash client bridge + hero/map bridge
+│   ├── maplibre_view.html
+│   ├── maplibre_view.js           MapLibre layers and overlays
+│   ├── race.js                    Race animation support
+│   └── NEW_LOGO.png
+└── tests/                         201 passing tests
 ```
+
+---
 
 ## License
 
-Coursework submission. Copyright held by the authors.
+Coursework submission for CSE112.
+
+Copyright held by the authors.
