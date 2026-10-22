@@ -20,6 +20,6 @@ These documents record project decisions and validation during earlier phases. T
 - [Original submission-oriented README](history/README_course_submission.md)
 - [Course algorithm analysis documents](history/) — six DOCX reports, preserved without editing their contents
 - [Earlier cleanup report](final_cleanup_report.md) — historical audit, not current cleanup certification
-- [Submission checklist](submission_notes.md) — archive of presentation/delivery requirements
+- [Submission checklist](history/submission_notes.md) — archive of presentation/delivery requirements
 
 **Note:** README and evidence references in earlier reports may contain historical test counts. CI linked in the [main README](../README.md) is the current automated check on this proposed branch.
