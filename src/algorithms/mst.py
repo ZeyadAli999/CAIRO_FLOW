@@ -16,7 +16,7 @@ Programmer Mode can render it verbatim.
 
 Disconnected inputs are handled gracefully: the result is a spanning
 forest. Six facilities (F3-F6, F9, F10) have no roads in either CSV, so
-they remain isolated singletons in the MST. See PHASE2_NOTES.md.
+they remain isolated singletons in the MST. See docs/history/PHASE2_NOTES.md.
 """
 from __future__ import annotations
 
