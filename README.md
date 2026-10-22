@@ -6,6 +6,42 @@ The project is delivered as a live Dash + MapLibre web dashboard with deployable
 
 ---
 
+## Engineering snapshot
+
+**An algorithms-and-systems project, not a live traffic navigation service.** CairoFlow models a weighted road network and explores routing, infrastructure design, resource allocation, and congestion scenarios through a browser dashboard.
+
+| Engineering area | Implemented techniques | Where to inspect |
+| --- | --- | --- |
+| **Graph search** | Dijkstra, A*, time-dependent routing, graph exploration comparisons | [Algorithms](src/algorithms/) · [Routing tests](tests/test_shortest_path.py) |
+| **Network / resource optimization** | Kruskal, Prim, 0/1 Knapsack, dynamic programming, and greedy scheduling | [Algorithm modules](src/algorithms/) · [Optimization tests](tests/test_dp.py) |
+| **Scenario modeling** | Peak congestion, incidents, emergency dispatch, maintenance and transit allocation | [Simulation](src/simulation/) · [Scenario tests](tests/test_simulation.py) |
+| **Machine learning** | RandomForest congestion estimator trained on project-provided edge/time records | [Predictor](src/ml/traffic_predictor.py) · [ML tests](tests/test_ml.py) |
+| **Software delivery** | Dash + MapLibre UI, Docker/Gunicorn, Render configuration, and pytest | [Application](app.py) · [Test suite](tests/) · [Dockerfile](Dockerfile) |
+
+### How the system fits together
+
+```mermaid
+flowchart LR
+    DATA["Project road + traffic datasets"] --> MODEL["Network graph / scenario state"]
+    MODEL --> ALGO["Routing and optimization algorithms"]
+    MODEL --> ML["Traffic forecast model"]
+    ML --> ALGO
+    ALGO --> UI["Dash + MapLibre visualization"]
+    MODEL --> UI
+    TEST["Pytest regression suite"] -. validates .-> ALGO
+    TEST -. validates .-> ML
+```
+
+### Decisions and limitations
+
+- **Algorithm outputs are distinguished by objective.** Shortest-distance routing and traffic-aware travel-time routing solve different problems, so their results must not be compared as interchangeable costs.
+- **Comparisons are inspectable.** The project includes A* vs. Dijkstra exploration comparisons, scenario configurations, and focused correctness tests.
+- **Model scope is intentionally small.** The RandomForest predictor uses 112 project-provided edge/time observations (28 road edges across four time-of-day buckets), not a continuously updated citywide sensor feed.
+- **Simulation is not a production claim.** Traffic, incident and resource scenarios are illustrative project data. The README records a historical result of **201 passing tests**; prospective reviewers should run the suite in their environment before treating it as current.
+- **Deployment evidence:** [Live demo (availability may vary)](https://cairo-flow.onrender.com/) · [Demo video](https://drive.google.com/file/d/1KsuF2ga9XD7zP1jJdw31tu_ZgH-R6fJG/view?usp=sharing) · [Run tests](#run-tests).
+
+---
+
 ## Submission Links
 
 | Item | Link |
