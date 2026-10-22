@@ -30,11 +30,7 @@ http://127.0.0.1:8050
 .\.venv\Scripts\python.exe -m pytest -q tests
 ```
 
-Current verified result:
-
-```text
-151 passed
-```
+The historical guide recorded **151 passing tests** at an earlier stage. This count is not a current assertion. Review the latest [GitHub Actions Python test run](https://github.com/ZeyadAli999/CAIRO_FLOW/actions/runs/39758074617), or run the command above locally.
 
 ## Production Start Command
 
@@ -103,8 +99,7 @@ gunicorn app:server --bind 0.0.0.0:$PORT
 /healthz
 ```
 
-7. After deployment succeeds, add the live URL to `README.md` and
-   `docs/submission_notes.md`.
+7. After deployment succeeds, verify the URL in the main `README.md`. Historical course submission notes are archived under `docs/history/`.
 
 ## Notes
 

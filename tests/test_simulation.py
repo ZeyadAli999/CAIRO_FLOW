@@ -69,7 +69,7 @@ def test_road_closure_finds_alternatives(sim_env):
 def test_emergency_dispatch_compares_algorithms(sim_env):
     """Emergency dispatch from Shubra (11) to a connected facility type
     so that both A* and Dijkstra actually find a path. (Medical
-    facilities are isolated in the Phase 1 dataset — see PHASE3_NOTES.)"""
+    facilities are isolated in the Phase 1 dataset — see docs/history/PHASE3_NOTES.md.)"""
     sim = sim_env["sim"]
     result = sim.run_scenario(
         "emergency_dispatch", source="11",
