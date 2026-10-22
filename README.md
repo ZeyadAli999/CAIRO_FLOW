@@ -1,5 +1,7 @@
 # CairoFlow
 
+[![Python tests](https://github.com/ZeyadAli999/CAIRO_FLOW/actions/workflows/ci.yml/badge.svg)](https://github.com/ZeyadAli999/CAIRO_FLOW/actions/workflows/ci.yml)
+
 **Transportation network optimization | Algorithms · Python · Dash · MapLibre · scikit-learn**
 
 CairoFlow is an interactive engineering project that models Greater Cairo as a weighted transportation network. It compares shortest paths, time-aware routing, infrastructure planning, resource allocation, and simulated disruptions using classical algorithms and a small traffic-prediction model.
